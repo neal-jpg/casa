@@ -27,7 +27,7 @@
   function builder(view,title,callback){
     return new root.google.picker.PickerBuilder().addView(view).setOAuthToken(token)
       .setDeveloperKey(settings.picker_key).setAppId(settings.project_number)
-      .setOrigin(root.location.origin).setTitle(title).hideNav().setCallback(callback)
+      .setOrigin(root.location.origin).setTitle(title).enableFeature(root.google.picker.Feature.NAV_HIDDEN).setCallback(callback)
       .setSize(Math.min(900,Math.max(280,root.innerWidth-24)),Math.min(650,Math.max(300,root.innerHeight-40)));
   }
   async function inboxAccess(){
