@@ -22,3 +22,5 @@ Upload documents uses Google's file chooser and limited user consent to put file
 in the private finance Inbox. Uploading does not analyze or import records.
 Refresh reloads the master Sheet only. Inbox identifiers and Picker configuration
 are returned by the authenticated backend, never embedded in public assets.
+
+Google Gemini powers new-Inbox analysis on Refresh, cached Overview/Month summaries, and Ask Casa. All financial data, drafts, AI usage, and owner-upload credentials stay in private Google resources. This public repository contains the interface only.

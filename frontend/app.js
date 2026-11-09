@@ -110,16 +110,17 @@ function acceptCloudResult(result,message){
 async function load(notify=false){
   if(notify&&refreshInFlight)return;
   const button=$('#refresh-button');
-  if(notify){refreshInFlight=true;button.disabled=true;button.title='Refreshing master Sheet…';button.setAttribute?.('aria-busy','true');$('#save-status').textContent=googleMaster()?'Refreshing Google Sheet…':'Reloading workbook…';}
+  if(notify){refreshInFlight=true;button.disabled=true;button.title='Refreshing and analyzing Inbox…';button.setAttribute?.('aria-busy','true');$('#save-status').textContent=googleMaster()?'Refreshing Sheet and analyzing Inbox…':'Reloading workbook…';}
   try{
-    const result=(!notify&&window.CasaWeb.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',notify?{}:undefined);
+    let result=(!notify&&window.CasaWeb.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',notify?{}:undefined);
+    if(notify){let batches=0;while(result.analysis?.remaining>0&&batches++<99){$('#save-status').textContent=`Analyzing Inbox · ${result.analysis.remaining} documents remaining…`;result=await request('/api/refresh',{});}if(result.analysis)toast(result.analysis.message);}
     state=result.state||result;
     if(result.cloud_status)cloudStatus=result.cloud_status;
     else{try{cloudStatus=await request('/api/cloud/status');}catch{cloudStatus=state.storage?{storage:state.storage}:null;}}
     normalizeSelectedMonth();$('#error-banner').hidden=true;render();
-    if(notify)toast(googleMaster()?(state.storage.online?'Master Sheet refreshed':'Google unavailable · showing verified saved records'):'Workbook reloaded');
+    if(notify)toast(googleMaster()?(state.storage.online?'Sheet and Inbox refreshed':'Google unavailable · showing verified saved records'):'Workbook reloaded');
   }catch(error){if(notify)$('#save-status').textContent=googleMaster()?'Refresh failed · previous verified records':'Workbook reload failed';throw error;}
-  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');button.title=googleMaster()?'Refresh master Sheet':'Reload workbook';}}
+  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');button.title=googleMaster()?'Refresh Sheet and analyze Inbox':'Reload workbook';}}
 }
 function showError(error){$('#error-banner').textContent=error.message||String(error);$('#error-banner').hidden=false;}
 let toastTimer;
@@ -236,8 +237,8 @@ function render(){
   renderReportingControls();
   $('#currency-select').value=ui.currency;
   $('#refresh-button').innerHTML=icon('refresh');
-  $('#refresh-button').title=googleMaster()?'Refresh master Sheet':'Reload workbook';
-  $('#refresh-button').setAttribute?.('aria-label',googleMaster()?'Refresh master Sheet':'Reload workbook');
+  $('#refresh-button').title=googleMaster()?'Refresh Sheet and analyze Inbox':'Reload workbook';
+  $('#refresh-button').setAttribute?.('aria-label',googleMaster()?'Refresh Sheet and analyze Inbox':'Reload workbook');
   $('#external-banner').hidden=!state.editing_external;
   if(state.editing_external){
     if(googleMaster()){
@@ -249,7 +250,7 @@ function render(){
   $('#save-status').textContent=googleMaster()?`${state.storage.online===false?'Offline · verified cloud cache':state.editing_external?'Google Sheets · read-only':'Connected to Google Sheets'} · ${state.workbook_name||'Family finances'}`:`${state.editing_external?'Excel editing mode':'Connected to local Excel'} · ${state.workbook_name||'Family Finances.xlsx'}`;
   if(googleMaster()){
     const sidebar=document.querySelector('.sidebar-bottom');
-    if(sidebar)sidebar.innerHTML='<button class="button documents-sidebar" type="button" data-upload-documents>Upload documents</button><div class="local-indicator"><span></span>Google Sheets master</div><p>Documents wait in Inbox.<br>Analysis happens when you ask.</p><div class="demo-mark">Private household records</div>';
+    if(sidebar)sidebar.innerHTML='<button class="button documents-sidebar" type="button" data-upload-documents>Upload documents</button><button class="button documents-sidebar" type="button" data-casa-assistant="chat">✦ Ask Casa</button><button class="button documents-sidebar" type="button" data-casa-assistant="inbox">Inbox review</button><div class="local-indicator"><span></span>Google Sheets master</div><p>Refresh analyzes new Inbox files.<br>Google AI · private household</p><div class="demo-mark">Private household records</div>';
     for(const button of document.querySelectorAll('#content button'))if(/\b(?:Save|saved|Save assumptions).*\bExcel\b/.test(button.textContent))button.textContent=button.textContent.replace(/\bExcel\b/g,'Google Sheets');
   }
   mountMonthlyAnalysis();
@@ -265,6 +266,7 @@ function render(){
 function navigationSnapshot(){return Object.fromEntries(['view','month','period','currency','person','category','kind','transactionFilters','search','showExcluded','reviewAll'].map(key=>[key,ui[key]??(['showExcluded','reviewAll'].includes(key)?false:'')]));}
 
 function openModal(title,body,footer='',onSubmit=null,modal=true){
+  $('#modal').classList.remove('assistant-dialog');
   if(googleMaster()){footer=footer.replace(/\bExcel\b/g,'Google Sheets');}
   const dialog=$('#modal');
   dialog.classList.toggle('documents-dialog',!modal);
@@ -580,4 +582,4 @@ document.addEventListener('click',async e=>{const button=e.target.closest('[data
 
 window.CasaNavigation?.configure({restore(snapshot){Object.assign(ui,snapshot);render();window.scrollTo(0,0);}});
 if(views[location.hash.slice(1)])ui.view=location.hash.slice(1);
-window.CasaWeb.ready.then(async()=>{const upload=location.hash==='#upload';await load();if(upload)window.CasaDocuments.open(window.CasaDocumentContext());}).catch(error=>{showError(error);$('#content').innerHTML=empty('The workbook could not be opened','Check the Google connection, then refresh your records.');});
+window.CasaWeb.ready.then(async()=>{const entry=location.hash;await load();if(entry==='#upload')window.CasaDocuments.open(window.CasaDocumentContext());if(entry==='#assistant')window.CasaAssistant.open('chat');if(entry==='#inbox')window.CasaAssistant.open('inbox');}).catch(error=>{showError(error);$('#content').innerHTML=empty('The workbook could not be opened','Check the Google connection, then refresh your records.');});

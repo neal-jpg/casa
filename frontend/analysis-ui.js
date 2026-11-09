@@ -36,7 +36,7 @@
   let enableReady = false;
   const periodTitle = () => currentPayload?.period === 'year' ? `Your ${escape(currentPayload.year)}, explained` : 'Your month, explained';
   const header = (working=false) => `<div class="card-header"><div><div class="ai-eyebrow">CASA INTELLIGENCE <span>AI</span></div><h2 class="section-title">${periodTitle()}</h2></div><div class="ai-actions"><label class="ai-auto"><input type="checkbox" id="ai-auto" ${autoEnabled?'checked':''}> Auto summaries</label><button class="button small" id="ai-refresh" ${working?'disabled':''}>${working?'Analyzing…':'Refresh summary'}</button></div></div>`;
-  const disclosure = '<details class="ai-privacy"><summary>About this AI summary <span>Aggregate data only · Cloud AI</span></summary><p class="table-note ai-disclosure">Cloud AI via your Codex sign-in. Only selected-period totals, monthly category comparisons, and coverage notes are sent. No transaction descriptions, account numbers, receipts, or workbook files. Summaries are saved locally and refresh when the figures change.</p></details>';
+  const disclosure = '<details class="ai-privacy"><summary>About this AI summary <span>Aggregate data only · Cloud AI</span></summary><p class="table-note ai-disclosure">Google Gemini through Casa’s private backend. Only selected-period totals, monthly category comparisons, and coverage notes are sent. No transaction descriptions, account numbers, receipts, or workbook files. Summaries are cached privately in Drive and refresh when the figures change.</p></details>';
   function paint(job) {
     const element = document.getElementById('ai-summary');
     if (!element) return;
@@ -91,13 +91,8 @@
     const key=JSON.stringify(payload);
     mountedKey=key;currentPayload=payload;
     paint(jobs.get(key));
-    if(global.CasaWeb){
-      const element=document.getElementById('ai-summary');
-      if(element)element.innerHTML='<div class="card-header"><div><div class="ai-eyebrow">CASA INTELLIGENCE</div><h2 class="section-title">AI summaries</h2></div><span class="pill neutral">Not connected</span></div><p class="ai-status">Your charts, comparisons, forecasts and monthly split run without AI. Web AI summaries need a separate provider; your Mac’s Codex sign-in is not available here. You can review the figures with ChatGPT manually.</p>';
-      return;
-    }
     if(!enableReady){
-      try {const response=await fetch('/api/preferences',{credentials:'same-origin'});const prefs=await response.json();autoEnabled=prefs.ai_auto!==false;}catch{}
+      try {if(global.CasaWeb){autoEnabled=global.CasaWeb.initialPreferences?.()?.ai_auto!==false;}else{const response=await fetch('/api/preferences',{credentials:'same-origin'});const prefs=await response.json();autoEnabled=prefs.ai_auto!==false;}}catch{}
       enableReady=true;
     }
     if(mountedKey!==key) return;

@@ -1,105 +1,66 @@
-/* Manual document intake. OAuth tokens stay in memory; files go only to Google Drive. */
+/* Native household uploads. Only the owner setup uses Google OAuth/Picker. */
 (function(root){
-  'use strict';
-  const SCOPE='https://www.googleapis.com/auth/drive.file';
-  let settings=null, sdkPromise=null, picker=null, token='', context=null, cycle=0;
-  const status=message=>{const element=document.getElementById('documents-status');if(element)element.textContent=message;};
-  const clearToken=()=>{token='';};
-  function loadPicker(){
-    if(root.google?.picker)return Promise.resolve();
-    if(sdkPromise)return sdkPromise;
-    sdkPromise=new Promise((resolve,reject)=>{
-      const load=()=>root.gapi.load('picker',{callback:resolve,onerror:()=>reject(new Error('Google’s upload window could not load. Try again.'))});
-      if(root.gapi){load();return;}
-      const script=document.createElement('script');script.src='https://apis.google.com/js/api.js';script.async=true;
-      script.onload=load;script.onerror=()=>reject(new Error('Google’s upload window could not load. Check your connection.'));
-      document.head.append(script);
-    }).catch(error=>{sdkPromise=null;throw error;});
-    return sdkPromise;
-  }
-  async function driveFile(id,fields){
-    if(!/^[A-Za-z0-9_-]{10,200}$/.test(id))throw new Error('Google returned an invalid document identifier.');
-    const response=await fetch('https://www.googleapis.com/drive/v3/files/'+id+'?fields='+encodeURIComponent(fields),{
-      headers:{Authorization:'Bearer '+token},credentials:'omit',cache:'no-store',redirect:'error'});
-    if(!response.ok){const error=new Error('Google could not verify Inbox access. Choose a household Google account with access to the finance folder.');error.status=response.status;throw error;}
-    return response.json();
-  }
-  function builder(view,title,callback){
-    return new root.google.picker.PickerBuilder().addView(view).setOAuthToken(token)
-      .setDeveloperKey(settings.picker_key).setAppId(settings.project_number)
-      .setOrigin(root.location.origin).setTitle(title).enableFeature(root.google.picker.Feature.NAV_HIDDEN).setCallback(callback)
-      .setSize(Math.min(900,Math.max(280,root.innerWidth-24)),Math.min(650,Math.max(300,root.innerHeight-40)));
-  }
-  async function inboxAccess(){
-    const folder=await driveFile(settings.inbox_id,'id,mimeType,trashed,capabilities(canAddChildren)');
-    if(folder.trashed||folder.mimeType!=='application/vnd.google-apps.folder'||folder.capabilities?.canAddChildren!==true)
-      throw new Error('Your Google account needs permission to add files to the finance Inbox.');
-  }
-  function showUploader(){
-    const round=cycle;
-    status('Choose documents in Google’s upload window. Files are saved to 00_INBOX.');
-    const view=new root.google.picker.DocsUploadView().setParent(settings.inbox_id);
-    picker=builder(view,'Upload documents to 00_INBOX',async data=>{
-      if(round!==cycle||!document.getElementById('modal').open)return;
-      if(data.action===root.google.picker.Action.CANCEL){clearToken();status('Upload window closed. Any completed uploads remain in Inbox.');return;}
-      if(data.action!==root.google.picker.Action.PICKED)return;
-      try{
-        const documents=data.docs||[];
-        if(!documents.length)throw new Error('Google did not confirm any uploaded documents. Check Inbox before retrying.');
-        for(const doc of documents){const saved=await driveFile(doc.id,'id,parents');if(!saved.parents?.includes(settings.inbox_id))throw new Error('An upload’s destination could not be verified. Check Inbox before retrying.');}
-        const message=`${documents.length} ${documents.length===1?'document':'documents'} uploaded to Inbox. Ready for your manual review in ChatGPT.`;
-        status(message);context?.toast(message);
-      }catch(error){status(error.message);}finally{clearToken();}
-    }).build();picker.setVisible(true);
-  }
-  function chooseInbox(){
-    const round=cycle;
-    status('Select 00_INBOX to authorize this upload destination.');
-    const view=new root.google.picker.DocsView(root.google.picker.ViewId.FOLDERS)
-      .setIncludeFolders(true).setSelectFolderEnabled(true).setFileIds(settings.inbox_id);
-    picker=builder(view,'Select your finance Inbox',async data=>{
-      if(round!==cycle||!document.getElementById('modal').open)return;
-      if(data.action===root.google.picker.Action.CANCEL){clearToken();status('Inbox authorization cancelled. No documents were uploaded.');return;}
-      if(data.action!==root.google.picker.Action.PICKED)return;
-      if(data.docs?.length!==1||data.docs[0].id!==settings.inbox_id){clearToken();status('Please choose the existing 00_INBOX folder in your finance folder.');return;}
-      try{await inboxAccess();showUploader();}catch(error){clearToken();status(error.message);}
-    }).build();picker.setVisible(true);
-  }
-  function authorize(){
-    const round=cycle;
-    if(!settings||!root.google?.accounts?.oauth2){status('Google sign-in is still loading. Try again in a moment.');return;}
-    // Called directly from a user click, so Google can open its account/consent window.
-    const client=root.google.accounts.oauth2.initTokenClient({client_id:root.CASA_PUBLIC_CONFIG.googleClientId,
-      scope:SCOPE,include_granted_scopes:false,
-      callback:async response=>{
-        if(round!==cycle||!document.getElementById('modal').open)return;
-        if(response.error||!response.access_token){clearToken();status('Google Drive authorization was not completed. No documents were uploaded.');return;}
-        token=response.access_token;
-        if(!root.google.accounts.oauth2.hasGrantedAllScopes(response,SCOPE)){clearToken();status('Allow access to files you choose for Casa to enable uploads.');return;}
-        try{await inboxAccess();showUploader();}catch(error){if(error.status===404)chooseInbox();else{clearToken();status(error.message);}}
-      },error_callback:()=>{clearToken();status('Google’s account window could not open. Try Chrome or Safari, then choose documents again.');}});
-    client.requestAccessToken({prompt:''});
-  }
-  async function open(ctx){
-    const round=++cycle;context=ctx;clearToken();settings=null;
-    // A non-modal dialog permits interaction with Google’s separately rendered Picker.
-    ctx.openModal('Upload documents',`<p class="documents-intro">Add statements, receipts, screenshots, or CSVs to your private Google Drive Inbox.</p><div class="documents-destination"><strong>00_INBOX · manual analysis</strong><p>Ask ChatGPT in your finance chat when you want new documents analyzed and the master Sheet updated. Refresh reloads the Sheet.</p></div><div class="documents-actions"><button class="button primary" id="documents-choose" type="button" disabled>Choose documents</button><a class="button" id="documents-open-inbox" target="_blank" rel="noopener noreferrer" hidden>Open Inbox in Drive</a></div><p id="documents-status" class="documents-status" role="status" aria-live="polite">Connecting to your Inbox…</p><p class="documents-help">Uploads do not analyze files or change financial records. No AI API is connected. Google may ask you to allow access to the Inbox and files you select.</p>`,'',null,false);
-    const dialog=document.getElementById('modal');
-    const dismiss=()=>{if(round!==cycle){dialog.removeEventListener('close',dismiss);return;}if(dialog.open)return;cycle++;clearToken();picker?.setVisible(false);dialog.removeEventListener('close',dismiss);};dialog.addEventListener('close',dismiss);
-    try{
-      const [config]=await Promise.all([ctx.request('/api/documents/config'),loadPicker()]);
-      if(!dialog.open||round!==cycle)return;
-      if(!/^[A-Za-z0-9_-]{10,200}$/.test(config.inbox_id)||!/^AIza[A-Za-z0-9_-]{20,100}$/.test(config.picker_key)||!/^\d+$/.test(config.project_number))throw new Error('The documents connection is not configured.');
-      settings=config;
-      const link=document.getElementById('documents-open-inbox');link.href='https://drive.google.com/drive/folders/'+config.inbox_id;link.hidden=false;
-      const button=document.getElementById('documents-choose');button.disabled=false;button.onclick=authorize;
-      status('Ready. Documents go directly from your browser to Google Drive.');button.focus();
-    }catch(error){status(error.message||'Inbox could not be opened. Try again.');}
-  }
-  document.addEventListener('click',event=>{
-    if(!event.target.closest('[data-upload-documents]'))return;
-    document.getElementById('web-nav-close')?.click();
-    if(root.CasaDocumentContext)open(root.CasaDocumentContext());
-  });
-  root.CasaDocuments=Object.freeze({open});
+ 'use strict';
+ let cycle=0,sdkPromise,picker;
+ const el=id=>document.getElementById(id);
+ const status=text=>{if(el('documents-status'))el('documents-status').textContent=text};
+ function loadPicker(){
+  if(root.google?.picker)return Promise.resolve();
+  if(sdkPromise)return sdkPromise;
+  sdkPromise=new Promise((resolve,reject)=>{
+   const load=()=>root.gapi.load('picker',{callback:resolve,onerror:()=>reject(Error('The one-time folder chooser could not load.'))});
+   if(root.gapi)return load();const script=document.createElement('script');script.src='https://apis.google.com/js/api.js';script.async=true;script.onload=load;script.onerror=()=>reject(Error('Google’s folder chooser could not load.'));document.head.append(script);
+  }).catch(error=>{sdkPromise=null;throw error});return sdkPromise;
+ }
+ async function grantInbox(config,ctx,round){
+  await loadPicker();if(round!==cycle)return;
+  const view=new root.google.picker.DocsView(root.google.picker.ViewId.FOLDERS).setIncludeFolders(true).setSelectFolderEnabled(true).setFileIds(config.inbox_id);
+  picker=new root.google.picker.PickerBuilder().addView(view).setOAuthToken(config.access_token).setDeveloperKey(config.picker_key).setAppId(config.project_number).setOrigin(root.location.origin).setTitle('One-time setup: select 00_INBOX').enableFeature(root.google.picker.Feature.NAV_HIDDEN).setSize(Math.max(566,Math.min(900,root.innerWidth-24)),Math.max(350,Math.min(650,root.innerHeight-40))).setCallback(async data=>{
+   if(round!==cycle)return;
+   if(data.action===root.google.picker.Action.CANCEL){status('Setup cancelled. The owner can reconnect when ready.');return;}
+   if(data.action!==root.google.picker.Action.PICKED)return;
+   if(data.docs?.length!==1||data.docs[0].id!==config.inbox_id){status('Select the existing 00_INBOX finance folder.');return;}
+   try{await ctx.request('/api/documents/confirm',{});picker?.setVisible(false);await open(ctx);}catch(error){status(error.message)}
+  }).build();picker.setVisible(true);
+ }
+ function connect(ctx,round){
+  const secret=el('documents-secret').value.trim();el('documents-secret').value='';
+  if(!secret){status('Paste the Google web client secret into this private setup field.');return;}
+  if(!root.google?.accounts?.oauth2){status('Google is still loading. Try again in a moment.');return;}
+  status('Completing the one-time owner connection…');
+  root.google.accounts.oauth2.initCodeClient({client_id:root.CASA_PUBLIC_CONFIG.googleClientId,scope:'openid email https://www.googleapis.com/auth/drive.file',include_granted_scopes:false,ux_mode:'popup',
+   callback:async response=>{
+    if(round!==cycle)return;
+    if(!response.code){status('The Google owner connection was not completed.');return;}
+    try{const config=await ctx.request('/api/documents/connect',{code:response.code,client_secret:secret});if(round!==cycle)return;if(config.ready)await open(ctx);else await grantInbox(config,ctx,round);}catch(error){status(error.message)}
+   },error_callback:()=>status('The owner connection window could not open. Use Chrome or Safari.')}).requestCode();
+ }
+ async function open(ctx){
+  const round=++cycle;
+  ctx.openModal('Upload documents',`<p class="documents-intro">Add statements, receipts, screenshots, or CSVs to your private Inbox.</p><div class="documents-destination"><strong>00_INBOX</strong><p>Uploads save documents only. Press Refresh to analyze new files and update Casa. Uncertain records wait for review.</p></div><div class="documents-actions"><button class="button primary" id="documents-choose" type="button" disabled>Choose documents</button><input id="documents-files" type="file" multiple hidden><a class="button" id="documents-open-inbox" target="_blank" rel="noopener noreferrer" hidden>Open Inbox</a></div><div id="documents-results" aria-live="polite"></div><p id="documents-status" role="status" class="documents-status">Connecting to Inbox…</p><details id="documents-setup" hidden><summary>One-time owner connection</summary><p class="documents-help">Only the owner connects Google Drive once. Household members then upload using their existing Casa sign-in. Paste the existing Casa Web OAuth client secret below; it is encrypted in Google Secret Manager. Never paste it into chat.</p><label for="documents-secret">Google web client secret</label><input id="documents-secret" type="password" autocomplete="off" maxlength="200"><button class="button" type="button" id="documents-connect">Connect uploads once</button></details><p class="documents-help">20 MB per document. PDF, CSV, XLSX, images and text supported. Images and document content are sent to Google AI when you press Refresh; crop or redact identifiers you do not want included.</p>`,'',null,false);
+  const dialog=el('modal');const closed=()=>{if(!dialog.open&&round===cycle){cycle++;picker?.setVisible(false);}dialog.removeEventListener('close',closed)};dialog.addEventListener('close',closed);
+  try{
+   const config=await ctx.request('/api/documents/config');if(round!==cycle||!el('modal').open)return;
+   const link=el('documents-open-inbox');link.href='https://drive.google.com/drive/folders/'+config.inbox_id;link.hidden=false;
+   el('documents-setup').hidden=!config.can_connect;
+   el('documents-connect').onclick=()=>connect(ctx,round);
+   el('documents-files').accept=config.extensions.join(',');
+   const choose=el('documents-choose');choose.disabled=!config.ready;
+   choose.onclick=()=>el('documents-files').click();
+   el('documents-files').onchange=async event=>{
+    const files=[...event.target.files];event.target.value='';choose.disabled=true;
+    for(const file of files){
+     if(round!==cycle)break;
+     const row=document.createElement('p');row.className='documents-file';row.textContent=file.name+' · Uploading…';el('documents-results').append(row);
+     if(file.size>config.max_bytes){row.textContent=file.name+' · Too large (20 MB maximum)';continue;}
+     try{const body=new FormData();body.append('file',file);const response=await root.fetch('/api/documents/upload',{method:'POST',body});const value=await response.json();if(!response.ok)throw Error(value.error||'Upload failed.');row.textContent=file.name+(value.duplicate?' · Already in Inbox':' · Saved to Inbox');}
+     catch(error){row.textContent=file.name+' · '+error.message;}
+    }
+    if(round===cycle){choose.disabled=false;status('Uploads finished. Press Refresh when you want to analyze new documents.');}
+   };
+   status(config.ready?'Ready. Choose documents—no extra Google sign-in required.':config.can_connect?'Finish the one-time owner connection below to enable uploads for the household.':'The household owner needs to finish the one-time Inbox connection.');
+  }catch(error){status(error.message)}
+ }
+ document.addEventListener('click',event=>{if(event.target.closest('[data-upload-documents]')){el('web-nav-close')?.click();if(root.CasaDocumentContext)open(root.CasaDocumentContext());}});
+ root.CasaDocuments=Object.freeze({open});
 })(window);
