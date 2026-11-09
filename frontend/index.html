@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#162432">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="color-scheme" content="light dark">
+  <title>Casa · Family finances</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./analysis.css">
+  <link rel="stylesheet" href="./polish.css">
+  <link rel="stylesheet" href="./portfolio.css">
+  <link rel="stylesheet" href="./planning.css">
+  <link rel="stylesheet" href="./overview-charts.css">
+  <link rel="stylesheet" href="./chrome.css">
+  <link rel="stylesheet" href="./accounts.css">
+  <link rel="stylesheet" href="./cloud-ui.css">
+  <link rel="stylesheet" href="./transaction-filters.css">
+  <link rel="stylesheet" href="./review-ui.css">
+  <link rel="stylesheet" href="./web.css">
+  <script src="./public-config.js"></script>
+  <script src="./web-session.js"></script>
+  <script src="./theme.js" defer></script>
+</head>
+<body>
+  <section id="web-login" class="web-login" aria-labelledby="web-login-title">
+    <div class="web-login-card"><div class="web-login-mark" aria-hidden="true">c.</div><p class="eyebrow">YOUR FAMILY, IN VIEW</p><h1 id="web-login-title">Welcome to Casa</h1><p>Sign in to open your private household finances.</p><div id="google-signin"></div><p id="web-login-status" role="status" aria-live="polite">Checking connection settings…</p><button class="button" id="web-signin-retry" type="button" hidden>Try sign-in again</button><small>The interface is hosted on GitHub. Financial records load from your private Google Sheet after authorization.</small></div>
+  </section>
+  <div class="app-shell" id="web-app" hidden inert>
+    <button class="web-nav-overlay" id="web-nav-overlay" aria-label="Close navigation" hidden></button>
+    <aside class="sidebar" id="web-sidebar" aria-label="Main navigation">
+      <button class="icon-button web-nav-close" id="web-nav-close" aria-label="Close navigation" type="button">×</button>
+      <a class="brand" href="#overview" aria-label="Casa home"><span class="brand-mark">c<span>.</span></span><span>casa<span class="brand-caption">FAMILY FINANCES</span></span></a>
+      <div class="workspace-label">YOUR HOUSEHOLD</div>
+      <nav id="navigation"></nav>
+      <div class="sidebar-bottom"><div class="local-indicator"><span></span>Private Google Sheet</div><p>Records stay in Google Drive.<br>Access is limited to your household.</p><div class="demo-mark">Private household records</div></div>
+    </aside>
+    <main class="main-shell">
+      <header class="topbar">
+        <div class="topbar-leading"><button class="icon-button web-menu-toggle" id="web-menu-toggle" type="button" aria-label="Open navigation" aria-controls="web-sidebar" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+          <div class="navigation-controls" role="group" aria-label="View history">
+            <button class="icon-button" id="navigation-back" type="button" aria-label="Go back" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+            <button class="icon-button" id="navigation-forward" type="button" aria-label="Go forward" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>
+          </div>
+          <div class="breadcrumb"><span class="breadcrumb-context">Your household <span>/</span></span><strong id="breadcrumb">Overview</strong></div>
+        </div>
+        <div class="topbar-controls">
+          <label class="sr-only" for="year-select">Reporting year</label><select id="year-select"></select>
+          <label class="sr-only" for="month-select">Reporting month</label><select id="month-select"></select>
+          <label class="sr-only" for="currency-select">Display currency</label><select id="currency-select"><option value="CLP">CLP</option><option value="USD">USD</option></select>
+          <button class="icon-button" id="refresh-button" title="Reload workbook" aria-label="Reload workbook"></button>
+          <button class="button web-signout" id="web-signout" type="button">Sign out</button>
+        </div>
+      </header>
+      <div id="external-banner" class="external-banner" hidden></div>
+      <div id="error-banner" class="error-banner" role="alert" hidden></div>
+      <div id="content" class="page-content"><div class="loading"><div class="loading-logo">c.</div><h1>Opening your household</h1><p>Reading your Google Sheet…</p></div></div>
+      <footer class="app-footer"><span id="save-status">Private Google Sheet</span><span>Source dates and review status are shown with imported records.</span></footer>
+    </main>
+  </div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="./analytics.js"></script>
+  <script src="./growth.js"></script>
+  <script src="./portfolio.js"></script>
+  <script src="./planning.js"></script>
+  <script src="./category-visuals.js"></script>
+  <script src="./analysis-ui.js"></script>
+  <script src="./overview-charts.js"></script>
+  <script src="./navigation.js"></script>
+  <script src="./accounts.js"></script>
+  <script src="./transaction-filters.js"></script>
+  <script src="./cloud-ui.js"></script>
+  <script src="./evidence-ui.js"></script>
+  <script src="./review-ui.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

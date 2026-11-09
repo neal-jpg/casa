@@ -1,0 +1,30 @@
+/* Compact screen navigation and appearance controls. */
+html[data-theme] .topbar { position:sticky; top:0; z-index:20; }
+html[data-theme] .topbar-leading { display:flex; align-items:center; gap:19px; min-width:0; }
+html[data-theme] .navigation-controls { display:flex; align-items:center; gap:2px; padding:3px; border:1px solid var(--line); border-radius:12px; background:var(--soft); flex-shrink:0; }
+html[data-theme] .navigation-controls .icon-button { width:29px; height:28px; border-radius:8px; }
+html[data-theme] .navigation-controls .icon-button:disabled { opacity:.3; cursor:default; background:transparent; color:var(--muted); }
+html[data-theme] .navigation-controls .icon-button:not(:disabled):hover { background:var(--surface); color:var(--teal); }
+html[data-theme] .theme-toggle { border:1px solid var(--line); background:var(--soft); width:36px; height:36px; }
+html[data-theme] .theme-toggle svg, html[data-theme] .navigation-controls svg { width:17px; height:17px; }
+html[data-theme] .topbar-leading .breadcrumb { white-space:nowrap; }
+html[data-theme] .breadcrumb > .breadcrumb-context { padding:0; opacity:1; color:inherit; }
+html[data-theme] .topbar-controls { flex-shrink:0; }
+html[data-theme] #year-select { min-width:80px; }
+html[data-theme] #month-select { min-width:116px; max-width:150px; }
+html[data-theme] .topbar button:focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
+@media(max-width:1180px) {
+  html[data-theme] .topbar-leading { gap:13px; }
+  html[data-theme] .breadcrumb-context { display:none; }
+}
+@media(max-width:860px) {
+  html[data-theme] .topbar-leading .breadcrumb { display:none; }
+  html[data-theme] .topbar-controls { margin-left:12px; }
+  html[data-theme] .topbar-controls .avatar { display:none; }
+}
+@media(max-width:700px) {
+  html[data-theme] .topbar { gap:8px; flex-wrap:wrap; height:auto; min-height:68px; padding-top:12px; padding-bottom:12px; }
+  html[data-theme] .topbar-controls { gap:5px; margin-left:auto; }
+  html[data-theme] #year-select { min-width:65px; }
+  html[data-theme] #month-select { min-width:103px; max-width:130px; }
+}

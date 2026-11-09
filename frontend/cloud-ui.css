@@ -1,0 +1,39 @@
+.cloud-workbook .cloud-master-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:15px 0}
+.cloud-sync-detail,.cloud-inbox-facts{display:flex;flex-wrap:wrap;align-items:center;gap:15px;color:var(--muted);font-size:11px;margin:16px 0}
+.cloud-inbox-facts strong{color:var(--ink);font-size:16px;margin-right:5px}
+.cloud-connect{margin-top:21px;padding-top:15px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
+.cloud-connect summary,.cloud-change-history summary{cursor:pointer;color:var(--ink);font-weight:600}
+.cloud-connect>p{max-width:800px;line-height:1.8}
+.cloud-connect form{display:flex;flex-direction:column;gap:0;margin-top:20px;max-width:1050px}
+.cloud-setup-step{padding:20px 0;border-top:1px solid var(--line)}
+.cloud-step-heading{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cloud-step-heading h3{font-size:13px;color:var(--ink);margin:0;font-weight:600}
+.cloud-step-number{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--soft);color:var(--ink);font-weight:600;font-size:11px;flex-shrink:0}
+.cloud-setup-step>p{line-height:1.8;max-width:800px;margin:8px 0 15px}
+.cloud-setup-step .field{margin-bottom:0}
+.cloud-setup-step .field>small{display:block;line-height:1.8;margin-top:7px}
+.cloud-setup-step input[type=file]{max-width:640px;padding:12px;border:1px dashed var(--line);border-radius:10px;background:var(--soft);color:var(--ink);font:inherit}
+.cloud-setup-step input[type=file]::file-selector-button{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;padding:7px 10px;margin-right:12px;cursor:pointer}
+.cloud-email-panel{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--soft);margin-top:15px;max-width:680px}
+.cloud-email-panel[hidden]{display:none}
+.cloud-setup-label{display:block;font-size:10px;font-weight:600;margin-bottom:6px}
+.cloud-public-email{color:var(--ink);font-size:12px;overflow-wrap:anywhere;user-select:all}
+.cloud-email-panel>small{display:block;line-height:1.8;margin-top:7px}
+.cloud-share-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cloud-share-link{display:inline-block;color:var(--accent,var(--ink));margin-top:8px;text-decoration:underline;text-underline-offset:3px}
+.cloud-access-confirmation{display:flex;align-items:flex-start;gap:9px;color:var(--ink);font-size:12px;line-height:1.7;max-width:700px}
+.cloud-access-confirmation input{margin:4px 0 0;width:15px;height:15px;flex-shrink:0;accent-color:var(--accent)}
+.cloud-connect-actions{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:15px}
+.cloud-setup-step .cloud-connect-actions{margin-top:18px}
+.cloud-inline-status{font-size:11px;color:var(--muted)}
+.cloud-inbox-table{max-height:550px;overflow:auto;margin-top:15px}
+.cloud-inbox-table th{position:sticky;top:0;background:var(--surface);z-index:1}
+.cloud-inbox-table td{font-size:11px;vertical-align:top}
+.cloud-inbox-table td:first-child{max-width:330px;overflow-wrap:anywhere}
+.cloud-inbox-table td:first-child strong{font-size:11px;font-weight:600}
+.cloud-inbox-table td small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.cloud-workbook select{border:1px solid var(--line);border-radius:8px;padding:8px 11px;background:var(--soft);color:var(--ink);font-size:11px}
+.cloud-import-preview{max-height:300px;overflow:auto;margin:14px 0}
+.cloud-workbook .notice p{margin:6px 0;font-size:11px}
+.cloud-change-history>summary{font-size:12px}
+@media(max-width:800px){.cloud-share-grid{grid-template-columns:1fr}.cloud-inbox-table{max-height:450px}.cloud-workbook .card-header{flex-wrap:wrap}}

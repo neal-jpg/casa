@@ -1,0 +1,67 @@
+/* Web-only session shell and mobile layout. No financial data in CSS. */
+[hidden]{display:none!important}html,body{min-width:0!important;width:100%;max-width:100%}body{overflow-x:hidden}.web-login{min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--bg)}.web-login-card{width:min(100%,440px);padding:38px 30px;border:1px solid var(--line);background:var(--surface);border-radius:24px;text-align:center;box-shadow:var(--shadow)}.web-login-mark{width:64px;height:64px;border:1px solid var(--teal);border-radius:19px;margin:0 auto 25px;color:var(--teal);font:53px Georgia,serif;line-height:57px}.web-login-card h1{font-size:30px;letter-spacing:-1px;margin:8px 0 12px}.web-login-card p{color:var(--muted);font-size:13px;line-height:1.7}.web-login-card small{display:block;font-size:11px;color:var(--muted);line-height:1.8;margin-top:25px}#google-signin{display:flex;justify-content:center;margin:23px 0 10px}#web-login-status{font-size:11px;min-height:38px}.web-signout{font-size:10px!important;padding:8px 10px!important}.web-menu-toggle,.web-nav-close,.web-nav-overlay{display:none}.web-nav-overlay{position:fixed;inset:0;border:0;background:#030a14a8;z-index:39}.web-menu-toggle svg{width:20px;height:20px}.table-scroll{max-width:100%;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.page-content>*{min-width:0}.card,.card-pad,.chart-card,.portfolio-chart-card{min-width:0}.table-scroll:focus-visible{outline:2px solid var(--teal)}input,select,textarea,button,a{-webkit-tap-highlight-color:transparent}.data-table td,.compact-table td{overflow-wrap:anywhere}dialog{max-width:min(720px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overscroll-behavior:contain}.modal-body{overflow-x:hidden}.modal-header h2{overflow-wrap:anywhere}
+@media(max-width:1100px){html[data-theme] .planning-grid,html[data-theme] .forecast-grid,html[data-theme] .portfolio-layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:860px){
+ html[data-theme] .sidebar{width:264px;max-width:calc(100vw - 48px);padding:34px 18px 24px;z-index:40;transform:translateX(-100%);visibility:hidden;transition:transform .18s ease,visibility .18s;overflow-y:auto}
+ html[data-theme] .main-shell{margin-left:0;width:100%;min-width:0}
+ html[data-theme] .brand{padding-left:12px;margin-left:0;margin-bottom:34px}
+ html[data-theme] .brand>span:last-child,html[data-theme] .workspace-label,html[data-theme] .nav-item>span,html[data-theme] .sidebar-bottom{display:revert}
+ html[data-theme] .brand>span:last-child{display:block}html[data-theme] .sidebar-bottom{margin-top:auto;padding-top:24px}
+ html[data-theme] .nav-item{justify-content:flex-start;padding:13px 15px;font-size:13px;min-height:46px}
+ html[data-theme] .workspace-label{margin-bottom:14px}
+ html[data-theme] .web-menu-toggle{display:inline-flex;width:38px;height:38px;border:1px solid var(--line);background:var(--soft)}
+ html[data-theme] .web-nav-close{display:flex;position:absolute;top:9px;right:11px;color:var(--nav-muted);font-size:27px}
+ .web-nav-open .sidebar{transform:translateX(0)!important;visibility:visible!important}
+ .web-nav-open .web-nav-overlay{display:block}
+ body.web-nav-open{overflow:hidden}
+ html[data-theme] .topbar{gap:10px;padding:12px 18px;min-height:76px;height:auto;flex-wrap:wrap;position:sticky;top:0}
+ html[data-theme] .topbar-leading{gap:9px;flex-shrink:0}
+ html[data-theme] .topbar-controls{margin-left:auto;gap:7px;flex-wrap:wrap}
+ html[data-theme] .page-content{padding:27px 22px 32px}
+ html[data-theme] .page-head{align-items:flex-start}
+ .person-tabs{max-width:100%}.person-tab{min-height:38px}
+ html[data-theme] .page-head h1{font-size:27px}
+ .table-scroll{overflow-x:auto}.transaction-table{min-width:730px}
+ .chart-control-row,.portfolio-controls,.planning-controls{flex-wrap:wrap;min-width:0}
+}
+@media(max-width:600px){
+ html[data-theme] .topbar{padding:10px 12px;gap:8px;align-items:center}
+ html[data-theme] .topbar-leading{width:100%;justify-content:space-between}
+ html[data-theme] .topbar-controls{width:100%;margin:0;display:flex;gap:6px;flex-wrap:nowrap;justify-content:space-between}
+ html[data-theme] #year-select{min-width:62px;width:66px;padding-left:8px;padding-right:14px}
+ html[data-theme] #month-select{min-width:98px;width:110px;max-width:none}
+ html[data-theme] #currency-select{min-width:58px;width:62px}
+ html[data-theme] .theme-toggle{width:32px;height:34px}
+ html[data-theme] #refresh-button{width:31px;height:34px}
+ html[data-theme] .topbar .web-signout{padding:7px 8px!important;white-space:nowrap;font-size:10px!important}
+ html[data-theme] .topbar select{height:35px;font-size:11px;padding-top:6px;padding-bottom:6px}
+ html[data-theme] .page-content{padding:23px 14px 26px}
+ html[data-theme] .page-head h1{font-size:25px}
+ html[data-theme] .head-actions{gap:7px;flex-wrap:wrap;width:100%}
+ html[data-theme] .head-actions .button{flex:1;min-height:38px;padding:8px 10px}
+ html[data-theme] .card-pad,html[data-theme] .chart-card,html[data-theme] .accounts-section{padding:18px 16px}
+ html[data-theme] .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ html[data-theme] .metric{padding:16px 13px}.metric-top{font-size:10px;gap:5px}.metric-icon{display:none}
+ html[data-theme] .metric-value{font-size:20px;letter-spacing:-.4px}.metric-note{font-size:9px;line-height:1.6}
+ html[data-theme] .section-grid,html[data-theme] .bottom-grid,html[data-theme] .workbook-grid,html[data-theme] .forecast-grid,html[data-theme] .monthend-layout,html[data-theme] .planning-layout,html[data-theme] .portfolio-layout{grid-template-columns:minmax(0,1fr);gap:15px}
+ .card-header{gap:10px;flex-wrap:wrap}.card-header>div{min-width:0}.card-header p{line-height:1.7}
+ .field-row{grid-template-columns:minmax(0,1fr)!important;gap:0}.field input,.field select,.field textarea{font-size:16px!important;max-width:100%;min-width:0}
+ .toolbar{flex-wrap:wrap;gap:10px}.toolbar .search-field{width:100%;flex-basis:100%}
+ .accounts-toolbar .accounts-search{min-width:0;width:100%}.accounts-toolbar .field{min-width:0;flex:1 1 130px}
+ .accounts-counts>span{flex:1;padding:10px 12px}.accounts-counts{gap:8px!important}
+ .review-filters{gap:10px}.review-filters label{flex:1 1 120px;min-width:0}.review-filters label:first-child{flex-basis:100%}.review-filters input,.review-filters select{min-width:0;width:100%;font-size:16px}.review-filters>.button{min-height:38px}
+ .review-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}.review-field input,.review-field select{font-size:16px!important}.review-amount-input>span{font-size:9px;padding-left:6px}.review-amount-input>input{padding-left:4px;padding-right:6px}
+ .review-item-heading{flex-wrap:wrap;gap:8px}.review-item-title{flex:1;min-width:140px}.review-item-title h2{font-size:12px}.review-issue{font-size:10px}.review-resolve{min-height:32px}.review-row-actions .button{min-height:34px}
+ .evidence-facts>div{grid-template-columns:minmax(0,1fr);gap:2px}.review-detail-body{overflow-wrap:anywhere}
+ .tx-filter-menu{min-width:0}.tx-filter-top{flex-wrap:wrap}.tx-date-row{flex-wrap:wrap}.tx-date-input{flex:1 1 120px;min-width:0}.tx-date-input input{min-width:0;font-size:16px!important}.tx-date-actions{width:100%;justify-content:flex-start}
+ .projection-controls,.projection-options,.portfolio-tabs,.planning-tabs{max-width:100%;flex-wrap:wrap}.projection-value{font-size:28px}
+ .chart-svg,.growth-svg,.history-svg{max-width:100%;height:auto}.chart-shell{overflow:hidden;min-width:0}.chart-legend,.mini-legend{flex-wrap:wrap;row-gap:8px}
+ .amount-chip{max-width:100%;overflow-wrap:anywhere}.hero-value{max-width:100%;overflow-wrap:anywhere}
+ .cloud-master-actions{flex-wrap:wrap}.cloud-master-actions .button{min-height:38px}.cloud-source-tools{flex-wrap:wrap}
+ dialog{width:calc(100vw - 20px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);padding:0;border-radius:17px}.modal-header,.modal-body,.modal-footer{padding:18px 16px}.modal-footer{flex-wrap:wrap}.modal-footer .button{min-height:41px;flex:1}.modal-categories{overflow-x:auto}.category-edit-row{min-width:430px}
+ .web-login{padding:18px}.web-login-card{padding:30px 22px}.web-login-card h1{font-size:27px}
+ html[data-theme] .app-footer{display:block;padding:8px 16px 23px;line-height:1.8}.app-footer>span{display:block}
+}
+@media(max-width:360px){html[data-theme] .topbar-controls{gap:3px}html[data-theme] .web-signout{font-size:9px!important;padding:7px 5px!important}html[data-theme] #month-select{min-width:88px;width:91px}html[data-theme] #year-select{min-width:58px;width:60px}html[data-theme] #currency-select{min-width:54px;width:54px}}
+@media(prefers-reduced-motion:reduce){html[data-theme] .sidebar{transition:none}}
+@media(max-width:600px){html[data-theme] .topbar-leading{padding-right:70px}html[data-theme] .topbar .web-signout{position:absolute;top:12px;right:12px;min-height:34px}html[data-theme] .topbar-controls{justify-content:space-between}}

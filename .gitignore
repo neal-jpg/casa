@@ -1,0 +1,20 @@
+# Explicit public source only. Financial files belong outside this repository.
+*
+!/.gitignore
+!/README.md
+!/frontend/
+!/frontend/*
+!/scripts/
+!/scripts/check_publish.py
+!/.github/
+!/.github/workflows/
+!/.github/workflows/pages.yml
+frontend/*.json
+frontend/*.csv
+frontend/*.xlsx
+frontend/*.pdf
+frontend/*.png
+frontend/*.ndjson
+frontend/*.py
+frontend/.DS_Store
+frontend/__pycache__/
