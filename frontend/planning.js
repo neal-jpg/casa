@@ -23,7 +23,7 @@
   }
   function cashStatus(ctx) {
     const c=memory.cash;
-    if(ctx.state.editing_external)return 'Save and close Excel to resume app changes.';
+    if(ctx.state.editing_external)return ctx.state.storage?.mode==='google'?'Finish your Google Sheets edits, then resume app editing.':'Save and close Excel to resume app changes.';
     if(c.dirty&&c.sourceChanged)return 'Workbook assumptions changed. Your unsaved preview is preserved; save it to replace those workbook values, or use saved assumptions.';
     if(c.dirty)return 'Unsaved cash assumptions. The graph is a preview until saved.';
     return c.saveMessage||'Cash assumptions match the workbook. Timeline controls remain a preview.';
@@ -58,7 +58,7 @@
     return `<label class="plan-field"><span>${e(label)}${unit?` <small>${e(unit)}</small>`:''}</span><input type="number" ${cash?'data-cash-field':'data-plan-field'}="${e(key)}" value="${finite(value)?e(value):''}" min="${min}" max="${max}" step="${step}" inputmode="decimal"></label>`;
   }
   function horizon(label,years,max=40,kind='years') {
-    return `<div class="plan-horizon"><div><label for="plan-horizon">${e(label)}</label><strong id="plan-horizon-value">${years} ${kind}</strong></div><input id="plan-horizon" data-plan-field="years" type="range" min="1" max="${max}" step="1" value="${years}" aria-label="${e(label)}"><div class="plan-range-labels"><span>1 ${kind==='years'?'year':'month'}</span><span>${max} ${kind}</span></div></div>`;
+    return `<div class="plan-horizon"><div><label for="plan-horizon">${e(label)}</label><strong id="plan-horizon-value">${years} ${years===1?kind.slice(0,-1):kind}</strong></div><input id="plan-horizon" data-plan-field="years" type="range" min="1" max="${max}" step="1" value="${years}" aria-label="${e(label)}"><div class="plan-range-labels"><span>1 ${kind==='years'?'year':'month'}</span><span>${max} ${kind}</span></div></div>`;
   }
   function tabs() {return `<div class="plan-tabs" role="tablist" aria-label="Forecast tools">${modes.map(([id,label])=>`<button type="button" role="tab" id="plan-tab-${id}" aria-controls="plan-panel" aria-selected="${memory.mode===id}" data-plan-tab="${id}" class="${memory.mode===id?'active':''}">${label}</button>`).join('')}</div>`;}
   function title(ctx) {
@@ -82,7 +82,7 @@
     const x=month=>left+month/result.months*innerW,y=value=>top+innerH-(value/max)*innerH;
     const line=points=>points.map((p,i)=>`${i?'L':'M'}${x(p.month).toFixed(2)},${y(p.balance).toFixed(2)}`).join(' ');
     const lower=series.conservative,upper=series.aggressive;
-    let svg=`<svg class="plan-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Investment forecast with conservative, normal, and aggressive annual-return scenarios over ${result.years} years">`;
+    let svg=`<svg class="plan-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Investment forecast with conservative, normal, and aggressive annual-return scenarios over ${result.years} year${result.years===1?'':'s'}">`;
     for(let i=0;i<=4;i++){const value=max*i/4,yy=y(value);svg+=`<line class="plan-chart-grid" x1="${left}" x2="${width-right}" y1="${yy}" y2="${yy}"/><text class="plan-chart-label" x="${left-12}" y="${yy+4}" text-anchor="end">${e(compact(value))}</text>`;}
     const band=upper.map((p,i)=>`${i?'L':'M'}${x(p.month)},${y(p.balance)}`).join(' ')+' '+[...lower].reverse().map(p=>`L${x(p.month)},${y(p.balance)}`).join(' ')+' Z';
     svg+=`<path d="${band}" class="plan-scenario-band"/>`;
@@ -94,7 +94,7 @@
     scenarios.forEach(([id])=>{const p=series[id][selected];svg+=`<circle cx="${xx}" cy="${y(p.balance)}" r="4" fill="${colors[id]}" stroke="var(--surface)" stroke-width="2"/>`;});
     const interval=result.years<=10?1:result.years<=25?5:10;
     const ticks=[...new Set([0,...Array.from({length:Math.floor(result.years/interval)},(_,i)=>(i+1)*interval),result.years])];
-    ticks.forEach(year=>{svg+=`<text class="plan-chart-label" x="${x(year*12)}" y="${height-12}" text-anchor="middle">${monthName(addMonths(startMonth,year*12))}</text>`;});
+    ticks.forEach((year,index)=>{const edge=index===0?' plan-time-start':index===ticks.length-1?' plan-time-end':'',secondary=index!==0&&index!==Math.floor((ticks.length-1)/2)&&index!==ticks.length-1?' plan-time-secondary':'';svg+=`<text class="plan-chart-label plan-time-label${edge}${secondary}" x="${x(year*12)}" y="${height-12}" text-anchor="middle">${monthName(addMonths(startMonth,year*12))}</text>`;});
     for(let year=0;year<=result.years;year++){const center=x(year*12),w=innerW/result.years;const title=scenarios.map(([id,label])=>`${label}: ${money(ctx,series[id][year*12].balance)}`).join(' · ');svg+=`<rect x="${Math.max(left,center-w/2)}" y="${top}" width="${Math.min(w,width-right-Math.max(left,center-w/2))}" height="${innerH}" fill="transparent" role="button" tabindex="0" data-plan-inspect="${year}" aria-label="Inspect year ${year}. ${e(title)}"><title>${e(monthName(addMonths(startMonth,year*12))+' · '+title)}</title></rect>`;}
     return svg+'</svg>';
   }
@@ -138,7 +138,8 @@
     svg+=`<path d="${points.map((p,i)=>`${i?'L':'M'}${x(p.month)},${y(p.display)}`).join(' ')}" fill="none" stroke="${schedule.points.at(-1).balance<0?'var(--red)':'var(--teal)'}" stroke-width="3"/>`;
     const selected=points[Math.min(c.inspect,c.years)];
     svg+=`<line class="plan-selected-line" x1="${x(selected.month)}" x2="${x(selected.month)}" y1="${top}" y2="${top+h}"/><circle cx="${x(selected.month)}" cy="${y(selected.display)}" r="5" fill="var(--teal)" stroke="var(--surface)" stroke-width="2"/>`;
-    [...new Set([0,Math.round(c.years/4),Math.round(c.years/2),Math.round(c.years*3/4),c.years])].forEach(m=>{svg+=`<text class="plan-chart-label" x="${x(m)}" y="${height-12}" text-anchor="middle">${e(monthName(addMonths(c.startMonth,m)))}</text>`;});
+    const ticks=[...new Set([0,Math.round(c.years/4),Math.round(c.years/2),Math.round(c.years*3/4),c.years])];
+    ticks.forEach((m,index)=>{const edge=index===0?' plan-time-start':index===ticks.length-1?' plan-time-end':'',secondary=index!==0&&index!==Math.floor((ticks.length-1)/2)&&index!==ticks.length-1?' plan-time-secondary':'';svg+=`<text class="plan-chart-label plan-time-label${edge}${secondary}" x="${x(m)}" y="${height-12}" text-anchor="middle">${e(monthName(addMonths(c.startMonth,m)))}</text>`;});
     return svg+'</svg>';
   }
   function cashResult(ctx) {

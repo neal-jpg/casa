@@ -65,3 +65,33 @@
 @media(max-width:360px){html[data-theme] .topbar-controls{gap:3px}html[data-theme] .web-signout{font-size:9px!important;padding:7px 5px!important}html[data-theme] #month-select{min-width:88px;width:91px}html[data-theme] #year-select{min-width:58px;width:60px}html[data-theme] #currency-select{min-width:54px;width:54px}}
 @media(prefers-reduced-motion:reduce){html[data-theme] .sidebar{transition:none}}
 @media(max-width:600px){html[data-theme] .topbar-leading{padding-right:70px}html[data-theme] .topbar .web-signout{position:absolute;top:12px;right:12px;min-height:34px}html[data-theme] .topbar-controls{justify-content:space-between}}
+
+/* Two mobile rows: touch actions first, spacious reporting selectors second. */
+.web-signout-icon{display:none}
+@media(max-width:600px){
+ html[data-theme] .topbar{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px 4px;padding:10px 8px;align-items:center}
+ html[data-theme] .topbar-leading,html[data-theme] .topbar-controls,html[data-theme] .navigation-controls{display:contents}
+ html[data-theme] .topbar .breadcrumb{display:none}
+ html[data-theme] .topbar .web-menu-toggle,html[data-theme] .topbar .navigation-controls .icon-button,html[data-theme] .topbar .theme-toggle,html[data-theme] .topbar #refresh-button,html[data-theme] .topbar .web-signout{width:100%;min-width:0;max-width:100%;height:44px;min-height:44px;margin:0;padding:8px!important;position:static;grid-row:1}
+ html[data-theme] .topbar .web-menu-toggle{grid-column:1/span 2}
+ html[data-theme] .topbar #navigation-back{grid-column:3/span 2}
+ html[data-theme] .topbar #navigation-forward{grid-column:5/span 2}
+ html[data-theme] .topbar .theme-control{grid-column:7/span 2;grid-row:1;min-width:0}
+ html[data-theme] .topbar #refresh-button{grid-column:9/span 2}
+ html[data-theme] .topbar .web-signout{grid-column:11/span 2}
+ html[data-theme] .topbar .web-signout-label{display:none}
+ html[data-theme] .topbar .web-signout-icon{display:block;width:19px;height:19px}
+ html[data-theme] .topbar #year-select,html[data-theme] .topbar #month-select,html[data-theme] .topbar #currency-select{width:100%;min-width:0;max-width:none;height:44px;padding:8px 22px 8px 8px;font-size:14px;grid-row:2}
+ html[data-theme] .topbar #year-select{grid-column:1/span 3}
+ html[data-theme] .topbar #month-select{grid-column:4/span 6}
+ html[data-theme] .topbar #currency-select{grid-column:10/span 3}
+}
+
+/* Reserve chevron space exactly once; native select arrows vary by browser. */
+@media(max-width:600px){
+ html[data-theme] .topbar #year-select,html[data-theme] .topbar #month-select,html[data-theme] .topbar #currency-select{
+  appearance:none;-webkit-appearance:none;padding-right:20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='m1 1 4 4 4-4' fill='none' stroke='%237e8e9b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 6px center;background-size:10px 6px;
+ }
+}
