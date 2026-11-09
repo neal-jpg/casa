@@ -110,16 +110,16 @@ function acceptCloudResult(result,message){
 async function load(notify=false){
   if(notify&&refreshInFlight)return;
   const button=$('#refresh-button');
-  if(notify){refreshInFlight=true;button.disabled=true;button.title='Refreshing records and Drive sources…';button.setAttribute?.('aria-busy','true');$('#save-status').textContent=googleMaster()?'Refreshing Google Sheet and scanning Drive…':'Reloading workbook…';}
+  if(notify){refreshInFlight=true;button.disabled=true;button.title='Refreshing master Sheet…';button.setAttribute?.('aria-busy','true');$('#save-status').textContent=googleMaster()?'Refreshing Google Sheet…':'Reloading workbook…';}
   try{
-    const result=await request(notify?'/api/refresh':'/api/state',notify?{}:undefined);
+    const result=(!notify&&window.CasaWeb.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',notify?{}:undefined);
     state=result.state||result;
     if(result.cloud_status)cloudStatus=result.cloud_status;
     else{try{cloudStatus=await request('/api/cloud/status');}catch{cloudStatus=state.storage?{storage:state.storage}:null;}}
     normalizeSelectedMonth();$('#error-banner').hidden=true;render();
-    if(notify){const pending=cloudStatus?.inbox?.pending_count||0;toast(googleMaster()?(state.storage.online?`Google Sheet refreshed · ${pending} ${pending===1?'source needs':'sources need'} review`:'Google unavailable · showing verified saved records'): 'Workbook reloaded');}
+    if(notify)toast(googleMaster()?(state.storage.online?'Master Sheet refreshed':'Google unavailable · showing verified saved records'):'Workbook reloaded');
   }catch(error){if(notify)$('#save-status').textContent=googleMaster()?'Refresh failed · previous verified records':'Workbook reload failed';throw error;}
-  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');button.title=googleMaster()?'Refresh Google Sheet and scan Drive':'Reload workbook';}}
+  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');button.title=googleMaster()?'Refresh master Sheet':'Reload workbook';}}
 }
 function showError(error){$('#error-banner').textContent=error.message||String(error);$('#error-banner').hidden=false;}
 let toastTimer;
@@ -236,8 +236,8 @@ function render(){
   renderReportingControls();
   $('#currency-select').value=ui.currency;
   $('#refresh-button').innerHTML=icon('refresh');
-  $('#refresh-button').title=googleMaster()?'Refresh Google Sheet and scan Drive':'Reload workbook';
-  $('#refresh-button').setAttribute?.('aria-label',googleMaster()?'Refresh Google Sheet and scan Drive':'Reload workbook');
+  $('#refresh-button').title=googleMaster()?'Refresh master Sheet':'Reload workbook';
+  $('#refresh-button').setAttribute?.('aria-label',googleMaster()?'Refresh master Sheet':'Reload workbook');
   $('#external-banner').hidden=!state.editing_external;
   if(state.editing_external){
     if(googleMaster()){
@@ -249,7 +249,7 @@ function render(){
   $('#save-status').textContent=googleMaster()?`${state.storage.online===false?'Offline · verified cloud cache':state.editing_external?'Google Sheets · read-only':'Connected to Google Sheets'} · ${state.workbook_name||'Family finances'}`:`${state.editing_external?'Excel editing mode':'Connected to local Excel'} · ${state.workbook_name||'Family Finances.xlsx'}`;
   if(googleMaster()){
     const sidebar=document.querySelector('.sidebar-bottom');
-    if(sidebar)sidebar.innerHTML='<div class="local-indicator"><span></span>Google Sheets master</div><p>Source files stay in Drive.<br>Access is limited to your household.</p><div class="demo-mark">Private household records</div>';
+    if(sidebar)sidebar.innerHTML='<button class="button documents-sidebar" type="button" data-upload-documents>Upload documents</button><div class="local-indicator"><span></span>Google Sheets master</div><p>Documents wait in Inbox.<br>Analysis happens when you ask.</p><div class="demo-mark">Private household records</div>';
     for(const button of document.querySelectorAll('#content button'))if(/\b(?:Save|saved|Save assumptions).*\bExcel\b/.test(button.textContent))button.textContent=button.textContent.replace(/\bExcel\b/g,'Google Sheets');
   }
   mountMonthlyAnalysis();
@@ -264,12 +264,13 @@ function render(){
 }
 function navigationSnapshot(){return Object.fromEntries(['view','month','period','currency','person','category','kind','transactionFilters','search','showExcluded','reviewAll'].map(key=>[key,ui[key]??(['showExcluded','reviewAll'].includes(key)?false:'')]));}
 
-function openModal(title,body,footer='',onSubmit=null){
+function openModal(title,body,footer='',onSubmit=null,modal=true){
   if(googleMaster()){footer=footer.replace(/\bExcel\b/g,'Google Sheets');}
   const dialog=$('#modal');
+  dialog.classList.toggle('documents-dialog',!modal);
   $('#modal-content').innerHTML=`<form id="modal-form"><div class="modal-header"><h2>${title}</h2><button class="icon-button" type="button" data-close-modal aria-label="Close dialog">${icon('close')}</button></div><div class="modal-body"><div class="modal-error" id="modal-error" role="alert"></div>${body}</div><div class="modal-footer"><button class="button" type="button" data-close-modal>Cancel</button>${footer}</div></form>`;
   $('#modal-form').addEventListener('submit',async e=>{e.preventDefault();if(!onSubmit)return;const btn=e.submitter;try{if(btn)btn.disabled=true;$('#modal-error').textContent='';await onSubmit(new FormData(e.target));dialog.close();}catch(error){$('#modal-error').textContent=error.message;if(btn)btn.disabled=false;}});
-  if(!dialog.open)dialog.showModal();
+  if(!dialog.open){dialog.setAttribute('aria-modal',String(modal));if(modal)dialog.showModal();else dialog.show();}
 }
 function field(label,name,value='',type='text',extra=''){return `<div class="field"><label for="m-${name}">${label}</label><input id="m-${name}" name="${name}" type="${type}" value="${esc(value)}" ${extra}></div>`;}
 function selectField(label,name,options,value){return `<div class="field"><label for="m-${name}">${label}</label><select id="m-${name}" name="${name}">${options.map(([v,l])=>`<option value="${esc(v)}" ${String(value)===String(v)?'selected':''}>${esc(l)}</option>`).join('')}</select></div>`;}
@@ -433,7 +434,7 @@ function liveOverview(){
   const invoice=t.rows.some(r=>String(r.date_basis||'').includes('invoice'));
   const categories=Object.values(t.rows.filter(isSpend).reduce((acc,r)=>{acc[r.category_id]??={...category(r.category_id),values:[]};acc[r.category_id].values.push(rowAmount(r)===null?null:rowAmount(r)*netSign(r));return acc},{})).map(c=>({...c,total:nullableSum(c.values)})).sort((a,b)=>(b.total||0)-(a.total||0));
   const recordStats=[['Included transactions',t.rows.length],['Excluded source records',state.transactions.filter(r=>inReport(r.date)&&(ui.person==='all'||r.person===ui.person)&&!isIncluded(r)).length],['Without a reporting estimate',unknown],['Sharing decisions pending',t.rows.filter(r=>isSpend(r)&&r.sharing==='needs_review').length]];
-  return `${pageHead('Your family finances',`${reportLabel()} · a clearer picture of your household.`,`<button class="button" data-action="import">${icon('upload')} Import CSV</button><button class="button primary" data-action="new-transaction">${icon('plus')} Add transaction</button>`)}
+  return `${pageHead('Your family finances',`${reportLabel()} · a clearer picture of your household.`,`<button class="button" type="button" data-upload-documents>${icon('upload')} Upload documents</button><button class="button primary" data-action="new-transaction">${icon('plus')} Add transaction</button>`)}
     ${personTabs()}
     <div class="metrics-grid">${metric('Income recorded',unavailable(t.income),`Income supplied for ${isYearReport()?'this year':'this month'}`,'income')}${metric('Recorded spending · ≈',unavailable(t.expenses),'After refunds · includes reporting estimates','expense')}${metric('Income less spending',unavailable(t.surplus),'Before investing · based on supplied records','wallet')}${metric('Original currency totals',nativeSpendSummary(t.rows),'Actual charges · no conversion applied','wallet')}</div>
     <div class="overview-first">${isYearReport()?annualSettlementHero():practicalSettlementHero()}<div class="card card-pad record-card"><div class="card-header"><div><h2 class="section-title">Behind the numbers</h2><p>Coverage of ${isYearReport()?'this year’s':'this month’s'} records</p></div><button class="small-link" data-view="review">Review ${reviewCount()} items ${icon('arrow')}</button></div><div class="record-stats">${recordStats.map(([label,value])=>`<div class="record-stat"><strong class="record-stat-value">${value}</strong><span>${label}</span></div>`).join('')}</div><p class="table-note">Your original bank charges are always retained. Missing records can affect totals and comparisons.</p></div></div>
@@ -538,6 +539,7 @@ function liveWorkbook(){if(window.CasaCloud)return window.CasaCloud.render(cloud
 function monthlyAnalytics(person=ui.person){
   return window.CasaAnalytics?.compute(state,{month:ui.month,period:isYearReport()?'year':'month',year:reportYear(),currency:ui.currency,person},rowAmount)||null;
 }
+window.CasaDocumentContext=()=>({request,openModal,toast,showError});
 function cloudContext(){return {state,cloudStatus,request,refresh:()=>load(true),acceptResult:acceptCloudResult,openModal,esc,icon,pageHead,showError,toast};}
 function accountsContext(){return {state,ui,esc,icon,nativeMoney,personName,pageHead,openModal,field,selectField,guardEditing,mutate,showError};}
 function reviewContext(){return {state,ui,esc,icon,nativeMoney,personName,pageHead,guardEditing,request,acceptResult:acceptCloudResult,showError,rerender:render};}
@@ -578,4 +580,4 @@ document.addEventListener('click',async e=>{const button=e.target.closest('[data
 
 window.CasaNavigation?.configure({restore(snapshot){Object.assign(ui,snapshot);render();window.scrollTo(0,0);}});
 if(views[location.hash.slice(1)])ui.view=location.hash.slice(1);
-window.CasaWeb.ready.then(()=>load()).catch(error=>{showError(error);$('#content').innerHTML=empty('The workbook could not be opened','Check the Google connection, then refresh your records.');});
+window.CasaWeb.ready.then(async()=>{const upload=location.hash==='#upload';await load();if(upload)window.CasaDocuments.open(window.CasaDocumentContext());}).catch(error=>{showError(error);$('#content').innerHTML=empty('The workbook could not be opened','Check the Google connection, then refresh your records.');});

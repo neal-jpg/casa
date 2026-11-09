@@ -17,3 +17,8 @@ Serve `frontend/` with a local static server. Assets use relative paths so the s
 Run `python scripts/check_publish.py` before committing or publishing. This guard rejects tracked files outside the explicit public allowlist, backend files, symlinks, private credential material, private Drive references and embedded financial payloads. Keep all original statements, workbooks, receipts and backend source outside this repository.
 
 Financial API responses are requested without browser caching. Sign-in credentials remain in memory; signing out clears the view and reloads the page. AI summaries are not connected until a separate web provider is configured. Numerical charts and calculations do not need AI.
+
+Upload documents uses Google's file chooser and limited user consent to put files
+in the private finance Inbox. Uploading does not analyze or import records.
+Refresh reloads the master Sheet only. Inbox identifiers and Picker configuration
+are returned by the authenticated backend, never embedded in public assets.

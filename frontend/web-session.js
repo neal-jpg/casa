@@ -11,12 +11,12 @@
     if(typeof raw.googleClientId!=='string'||!raw.googleClientId.endsWith('.apps.googleusercontent.com'))throw new Error();
     apiBase=url.origin;clientId=raw.googleClientId;
   }catch{configurationError='Casa is not connected yet. Complete the web deployment settings before signing in.';}
-  let credential='',expiresTimer=null,unlock;
+  let credential='',expiresTimer=null,unlock,initialState=null,initialPreferences=null;
   const ready=new Promise(resolve=>{unlock=resolve});
   let signedIn=false,signingIn=false;
   const status=text=>{const element=document.getElementById('web-login-status');if(element)element.textContent=text;};
   function clearScreen(){
-    credential='';signedIn=false;clearTimeout(expiresTimer);
+    credential='';initialState=null;initialPreferences=null;signedIn=false;clearTimeout(expiresTimer);
     const shell=document.getElementById('web-app');if(shell){shell.hidden=true;shell.inert=true;}
     document.getElementById('content')?.replaceChildren();
     document.getElementById('modal')?.close();document.getElementById('modal-content')?.replaceChildren();
@@ -49,7 +49,7 @@
       // Only the backend decides whether this credential is valid and allowed.
       const result=await nativeFetch(apiBase+'/api/state',{headers:{Authorization:'Bearer '+response.credential},credentials:'omit',cache:'no-store',redirect:'error'});
       if(!result.ok){if(result.status===403)throw new Error('This Google account is not authorized for Casa.');throw new Error('Your sign-in could not be verified. Try again.');}
-      await result.json();
+      initialState=await result.json();initialPreferences=initialState.preferences||null;
       credential=response.credential;signedIn=true;
       // Decoding exp only schedules local cleanup; signature and identity are verified by the server.
       let lifetime=50*60*1000;
@@ -58,7 +58,7 @@
       document.getElementById('web-login').hidden=true;
       const shell=document.getElementById('web-app');shell.hidden=false;shell.inert=false;
       unlock();
-    }catch(error){credential='';status(error.message||'Sign-in could not be verified. Try again.');}
+    }catch(error){credential='';initialState=null;initialPreferences=null;status(error.message||'Sign-in could not be verified. Try again.');}
     finally{signingIn=false;}
   }
   function loadGoogleSignIn(){
@@ -110,5 +110,7 @@
     if(configurationError){status(configurationError);return;}
     loadGoogleSignIn();
   });
-  root.CasaWeb=Object.freeze({ready,signOut,isSignedIn:()=>signedIn});
+  root.CasaWeb=Object.freeze({ready,signOut,isSignedIn:()=>signedIn,
+    takeInitialState:()=>{const value=initialState;initialState=null;return value;},
+    initialPreferences:()=>initialPreferences});
 })(window);

@@ -68,8 +68,8 @@
   else if (system && system.addListener) system.addListener(onSystemChange);
 
   const initialRevision = revision;
-  const ready = fetch('/api/preferences', { credentials: 'same-origin' })
-    .then(response => response.ok ? response.json() : null)
+  const ready = (window.CasaWeb ? window.CasaWeb.ready.then(() => window.CasaWeb.initialPreferences()) :
+    fetch('/api/preferences', { credentials: 'same-origin' }).then(response => response.ok ? response.json() : null))
     .then(saved => {
       if (revision !== initialRevision || !saved || !valid(saved.theme)) return;
       preference = saved.theme;
