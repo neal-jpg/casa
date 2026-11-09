@@ -17,3 +17,8 @@ html[data-theme=dark] .chat-launcher,html[data-theme=dark] .chat-composer button
 @media(prefers-reduced-motion:reduce){#refresh-button.is-refreshing svg,.chat-status.thinking::before{animation:none}}
 
 .budget-notes{margin-top:16px}.budget-notes summary{font-size:10px;color:var(--muted);cursor:pointer;line-height:1.7}
+/* Refresh outcomes stay readable when an import needs review or filing access. */
+#refresh-details{margin-top:9px;font-size:12px;max-width:760px}
+#refresh-details summary{cursor:pointer;color:var(--ink);font-weight:600}
+#refresh-results{padding-left:17px;line-height:1.6;margin:8px 0 2px;max-height:180px;overflow:auto}
+#refresh-progress>div:last-child{display:flex;gap:8px;align-items:center;flex-wrap:wrap}

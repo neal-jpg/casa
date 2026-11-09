@@ -43,6 +43,7 @@ const sum = (rows,fn) => rows.reduce((total,row)=>total+fn(row),0);
 const roundCLP = value => Math.sign(value)*Math.floor(Math.abs(value)+0.5+1e-8);
 const allMonths = () => [...new Set([...state.months,...state.transactions.map(t=>monthKey(t.date)),...state.settlements.map(t=>monthKey(t.date))])].filter(Boolean).sort();
 function availableReportingMonths(){
+  if(['investments','accounts','forecast'].includes(ui.view))return [...new Set([...allMonths(),...(state.investment_history||[]).map(x=>monthKey(x.date)),...(state.investments||[]).filter(x=>x.as_of).map(x=>monthKey(x.as_of))])].filter(Boolean).sort();
   if(ui.view!=='monthend')return allMonths();
   const now=new Date(),planning=Array.from({length:12},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()+i,15);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`});
   let saved=[];try{saved=Object.keys(JSON.parse(state.settings.monthly_budgets_v1||'{}').months||{}).filter(m=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(m))}catch{}
@@ -115,19 +116,19 @@ function acceptCloudResult(result,message){
 }
 async function load(notify=false){
   if(notify&&refreshInFlight)return;
-  const button=$('#refresh-button');let failed=false,analysisId=null;
+  const button=$('#refresh-button');let failed=false,analysisId=null,analysisResult=null;
   if(notify){refreshInFlight=true;button.disabled=true;button.setAttribute?.('aria-busy','true');analysisId=window.CasaRefresh?.begin(request,!!window.CasaWeb);}
   try{
     const body=notify?(analysisId&&window.CasaWeb?{analysis_id:analysisId}:{}):undefined;
     let result=(!notify&&window.CasaWeb?.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',body);
-    if(notify){let batches=0;while(result.analysis?.remaining>0&&!result.analysis.stopped&&!window.CasaRefresh?.stopping()&&batches++<99){if(result.progress)window.CasaRefresh?.show(result.progress);result=await request('/api/refresh',body);}}
+    if(notify){window.CasaRefresh?.record?.(result.analysis);let batches=0;while(result.analysis?.remaining>0&&!result.analysis.stopped&&!window.CasaRefresh?.stopping()&&batches++<99){if(result.progress)window.CasaRefresh?.show(result.progress);result=await request('/api/refresh',body);window.CasaRefresh?.record?.(result.analysis);}analysisResult=result.analysis;}
     state=result.state||result;
     if(result.cloud_status)cloudStatus=result.cloud_status;
     else{try{cloudStatus=await request('/api/cloud/status');}catch{cloudStatus=state.storage?{storage:state.storage}:null;}}
     normalizeSelectedMonth();$('#error-banner').hidden=true;render();
-    if(notify){if(result.progress)window.CasaRefresh?.show(result.progress);toast(result.analysis?.stopped||window.CasaRefresh?.stopping()?'Analysis stopped · saved records retained':googleMaster()?'Sheet and Inbox refreshed':'Workbook reloaded');}
+    if(notify){if(result.progress)window.CasaRefresh?.show(result.progress);toast(result.analysis?.stopped||window.CasaRefresh?.stopping()?'Analysis stopped · saved records retained':result.analysis?.summary?.review?'Sheet refreshed · documents need review':result.analysis?.summary?.organization_pending?'Sheet refreshed · file organization needs attention':googleMaster()?'Sheet and Inbox refreshed':'Workbook reloaded');}
   }catch(error){failed=true;throw error;}
-  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');window.CasaRefresh?.finish(failed);}}
+  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');window.CasaRefresh?.finish(failed,analysisResult);}}
 }
 function showError(error){$('#error-banner').textContent=error.message||String(error);$('#error-banner').hidden=false;}
 let toastTimer;
