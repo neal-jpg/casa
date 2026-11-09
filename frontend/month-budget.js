@@ -33,7 +33,8 @@
   const value=compute(ctx.state,ctx.month,scope,ctx.amount),currency=value.currency;
   const fmt=x=>known(x)?ctx.format(x,currency):'Not available';
   const difference=(now,base,label)=>{
-   if(!known(now)||!known(base))return `<span>${label} unavailable</span>`;
+   if(!known(base))return `<span>${label} unavailable</span>`;
+   if(!known(now))return `<span>${label}: ${esc(fmt(base))}</span>`;
    const delta=now-base;if(Math.abs(delta)<.005)return `<span>Same as ${label}</span>`;
    const text=base>0?`${Math.abs(delta/base*100).toFixed(0)}%`:fmt(Math.abs(delta));
    return `<span class="budget-comparison ${delta>0?'rise':'fall'}">${delta>0?'↑':'↓'} ${esc(text)} vs ${label}</span>`;
