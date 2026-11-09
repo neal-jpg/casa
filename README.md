@@ -8,7 +8,7 @@ Financial records live in a private Google Sheet and Google Drive. A separate pr
 
 Enable GitHub Pages with **GitHub Actions** as the source. The Pages workflow validates the publish allowlist and deploys only `frontend/`.
 
-`frontend/public-config.js` holds only the public backend origin and Google OAuth web client ID. Both are empty until the private backend is configured. Empty settings show a setup screen and make no financial API requests. Never put Sheet IDs, account emails, keys, credentials, financial exports or screenshots here.
+`frontend/public-config.js` holds only the configured public backend origin and Google OAuth web client ID. Empty settings show a setup screen and make no financial API requests. Never put Sheet IDs, account emails, keys, credentials, financial exports or screenshots here.
 
 ## Development
 
