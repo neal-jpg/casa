@@ -42,14 +42,20 @@ const chartMoney = v => `${ui.currency==='USD'?'$':''}${compact(ui.currency==='U
 const sum = (rows,fn) => rows.reduce((total,row)=>total+fn(row),0);
 const roundCLP = value => Math.sign(value)*Math.floor(Math.abs(value)+0.5+1e-8);
 const allMonths = () => [...new Set([...state.months,...state.transactions.map(t=>monthKey(t.date)),...state.settlements.map(t=>monthKey(t.date))])].filter(Boolean).sort();
+function availableReportingMonths(){
+  if(ui.view!=='monthend')return allMonths();
+  const now=new Date(),planning=Array.from({length:12},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()+i,15);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`});
+  let saved=[];try{saved=Object.keys(JSON.parse(state.settings.monthly_budgets_v1||'{}').months||{}).filter(m=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(m))}catch{}
+  return [...new Set([...allMonths(),...planning,...saved])].sort();
+}
 const supportsAnnualReport = (view=ui.view) => ['overview','transactions'].includes(view);
 const isYearReport = () => ui.period==='year'&&supportsAnnualReport();
 const reportYear = () => ui.month.slice(0,4);
 const inReport = date => isYearReport()?monthKey(date).slice(0,4)===reportYear():monthKey(date)===ui.month;
 const reportLabel = () => isYearReport()?reportYear()+' · full year':monthLabel(ui.month);
-const reportMonths = () => allMonths().filter(month=>month.slice(0,4)===reportYear());
+const reportMonths = () => availableReportingMonths().filter(month=>month.slice(0,4)===reportYear());
 function selectReportingYear(year){
-  const months=allMonths().filter(month=>month.slice(0,4)===year);
+  const months=availableReportingMonths().filter(month=>month.slice(0,4)===year);
   if(!months.length)return;
   const sameMonth=year+ui.month.slice(4);
   ui.month=months.includes(sameMonth)?sameMonth:months.at(-1);
@@ -57,7 +63,7 @@ function selectReportingYear(year){
 }
 function renderReportingControls(){
   if(!supportsAnnualReport())ui.period='month';
-  const years=[...new Set(allMonths().map(month=>month.slice(0,4)))].sort().reverse();
+  const years=[...new Set(availableReportingMonths().map(month=>month.slice(0,4)))].sort().reverse();
   $('#year-select').innerHTML=years.map(year=>`<option value="${year}" ${reportYear()===year?'selected':''}>${year}</option>`).join('');
   $('#month-select').innerHTML=(supportsAnnualReport()?`<option value="year" ${isYearReport()?'selected':''}>Full year</option>`:'')+reportMonths().map(month=>`<option value="${month}" ${!isYearReport()&&ui.month===month?'selected':''}>${new Date(month+'-15T12:00:00').toLocaleDateString('en-US',{month:'long'})}</option>`).join('');
   const custom=ui.view==='transactions'&&window.CasaTransactionFilters?.hasDateRange(transactionSelection());
@@ -99,7 +105,7 @@ async function mutate(path,payload,success='Saved to Excel'){
   acceptCloudResult(result,success);return state;
 }
 function googleMaster(){return state?.storage?.mode==='google';}
-function normalizeSelectedMonth(){if(!ui.month)ui.month=state.settings.default_month||state.months.at(-1);if(!state.months.includes(ui.month)&&state.months.length)ui.month=state.months.at(-1);}
+function normalizeSelectedMonth(){if(!ui.month)ui.month=state.settings.default_month||state.months.at(-1);const available=availableReportingMonths();if(!available.includes(ui.month)&&available.length)ui.month=available.at(-1);}
 function acceptCloudResult(result,message){
   state=result.state||result;
   if(result.cloud_status)cloudStatus=result.cloud_status;
@@ -109,23 +115,24 @@ function acceptCloudResult(result,message){
 }
 async function load(notify=false){
   if(notify&&refreshInFlight)return;
-  const button=$('#refresh-button');
-  if(notify){refreshInFlight=true;button.disabled=true;button.title='Refreshing and analyzing Inbox…';button.setAttribute?.('aria-busy','true');$('#save-status').textContent=googleMaster()?'Refreshing Sheet and analyzing Inbox…':'Reloading workbook…';}
+  const button=$('#refresh-button');let failed=false,analysisId=null;
+  if(notify){refreshInFlight=true;button.disabled=true;button.setAttribute?.('aria-busy','true');analysisId=window.CasaRefresh?.begin(request,!!window.CasaWeb);}
   try{
-    let result=(!notify&&window.CasaWeb.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',notify?{}:undefined);
-    if(notify){let batches=0;while(result.analysis?.remaining>0&&batches++<99){$('#save-status').textContent=`Analyzing Inbox · ${result.analysis.remaining} documents remaining…`;result=await request('/api/refresh',{});}if(result.analysis)toast(result.analysis.message);}
+    const body=notify?(analysisId&&window.CasaWeb?{analysis_id:analysisId}:{}):undefined;
+    let result=(!notify&&window.CasaWeb?.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',body);
+    if(notify){let batches=0;while(result.analysis?.remaining>0&&!result.analysis.stopped&&!window.CasaRefresh?.stopping()&&batches++<99){if(result.progress)window.CasaRefresh?.show(result.progress);result=await request('/api/refresh',body);}}
     state=result.state||result;
     if(result.cloud_status)cloudStatus=result.cloud_status;
     else{try{cloudStatus=await request('/api/cloud/status');}catch{cloudStatus=state.storage?{storage:state.storage}:null;}}
     normalizeSelectedMonth();$('#error-banner').hidden=true;render();
-    if(notify)toast(googleMaster()?(state.storage.online?'Sheet and Inbox refreshed':'Google unavailable · showing verified saved records'):'Workbook reloaded');
-  }catch(error){if(notify)$('#save-status').textContent=googleMaster()?'Refresh failed · previous verified records':'Workbook reload failed';throw error;}
-  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');button.title=googleMaster()?'Refresh Sheet and analyze Inbox':'Reload workbook';}}
+    if(notify){if(result.progress)window.CasaRefresh?.show(result.progress);toast(result.analysis?.stopped||window.CasaRefresh?.stopping()?'Analysis stopped · saved records retained':googleMaster()?'Sheet and Inbox refreshed':'Workbook reloaded');}
+  }catch(error){failed=true;throw error;}
+  finally{if(notify){refreshInFlight=false;button.disabled=false;button.setAttribute?.('aria-busy','false');window.CasaRefresh?.finish(failed);}}
 }
 function showError(error){$('#error-banner').textContent=error.message||String(error);$('#error-banner').hidden=false;}
 let toastTimer;
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,3400);}
-function navigate(view){if(!views[view])return;ui.view=view;if(!supportsAnnualReport(view))ui.period='month';render();window.scrollTo(0,0);}
+function navigate(view){if(!views[view])return;ui.view=view;normalizeSelectedMonth();if(!supportsAnnualReport(view))ui.period='month';render();window.scrollTo(0,0);}
 function personTabs(){return `<div class="person-tabs" role="group" aria-label="Filter by person">${['all','neal','partner'].map(p=>`<button class="person-tab ${ui.person===p?'active':''}" data-person="${p}" aria-pressed="${ui.person===p}">${esc(personName(p))}</button>`).join('')}</div>`;}
 function pageHead(title,description,actions='',eyebrow='YOUR FAMILY, IN VIEW'){return `<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${description}</p></div><div class="head-actions">${actions}</div></div>`;}
 function metric(label,value,note,iconName='wallet'){return `<div class="card metric"><div class="metric-top"><span>${label}</span><span class="metric-icon">${icon(iconName)}</span></div><div class="metric-value amount-chip">${value}</div><div class="metric-note">${note}</div></div>`;}
@@ -250,7 +257,7 @@ function render(){
   $('#save-status').textContent=googleMaster()?`${state.storage.online===false?'Offline · verified cloud cache':state.editing_external?'Google Sheets · read-only':'Connected to Google Sheets'} · ${state.workbook_name||'Family finances'}`:`${state.editing_external?'Excel editing mode':'Connected to local Excel'} · ${state.workbook_name||'Family Finances.xlsx'}`;
   if(googleMaster()){
     const sidebar=document.querySelector('.sidebar-bottom');
-    if(sidebar)sidebar.innerHTML='<button class="button documents-sidebar" type="button" data-upload-documents>Upload documents</button><button class="button documents-sidebar" type="button" data-casa-assistant="chat">✦ Ask Casa</button><button class="button documents-sidebar" type="button" data-casa-assistant="inbox">Inbox review</button><div class="local-indicator"><span></span>Google Sheets master</div><p>Refresh analyzes new Inbox files.<br>Google AI · private household</p><div class="demo-mark">Private household records</div>';
+    if(sidebar)sidebar.innerHTML='<button class="button documents-sidebar" type="button" data-upload-documents>Upload documents</button><button class="button documents-sidebar" type="button" data-casa-assistant="inbox">Inbox review</button><div class="local-indicator"><span></span>Google Sheets master</div><p>Refresh analyzes new Inbox files.<br>Google AI · private household</p><div class="demo-mark">Private household records</div>';
     for(const button of document.querySelectorAll('#content button'))if(/\b(?:Save|saved|Save assumptions).*\bExcel\b/.test(button.textContent))button.textContent=button.textContent.replace(/\bExcel\b/g,'Google Sheets');
   }
   mountMonthlyAnalysis();
@@ -260,6 +267,7 @@ function render(){
   if(ui.view==='transactions')window.CasaTransactionFilters?.mount({selection:transactionSelection(),onChange:applyTransactionFilters});
   if(ui.view==='workbook')window.CasaCloud?.mount(cloudContext());
   if(ui.view==='review')window.CasaReview?.mount(reviewContext());
+  if(ui.view==='monthend')window.CasaBudget?.mount(budgetContext());
   if(state.editing_external){for(const element of document.querySelectorAll('#content [data-action="new-transaction"],#content [data-action="new-investment"],#content [data-action="new-goal"],#content [data-action="import"],#content [data-edit],#content [data-edit-investment],#content [data-edit-goal],#content [data-account-add],#content [data-account-edit],#content [data-month-income],#content [data-review-resolve]')){if(element.tagName==='BUTTON')element.disabled=true;else{element.setAttribute('aria-disabled','true');element.setAttribute('tabindex','-1');}}}
   window.CasaNavigation?.record(navigationSnapshot());
 }
@@ -499,7 +507,7 @@ function annualSettlementHero(){
 }
 function liveMonthEnd(){
   const w=workingMonth(ui.month);
-  return `${pageHead('Who owes whom this month',`${monthLabel(ui.month)} · your household’s monthly shared-spending balance.`)}
+  return `${pageHead('Your month, in view',`${monthLabel(ui.month)} · your shared balance, spending goals, and monthly patterns.`)}
     <div class="monthend-layout">${practicalSettlementHero(true)}<section class="card card-pad"><div class="card-header"><div><h2 class="section-title">The monthly calculation</h2><p>Income determines the proportional split</p></div><span class="pill neutral">CLP</span></div>
     <div class="income-split-grid">${['neal','partner'].map(p=>`<div class="income-split-tile"><span class="person-badge ${p==='partner'?'partner':''}">${esc(personName(p))}</span><span class="average-label">Income used for the split</span>${w.incomes[p]===null?`<button class="button small" data-month-income="${p}">Enter monthly income</button>`:amountChip(nativeMoney(w.incomes[p],'CLP'))}</div>`).join('')}</div>
     <div class="explain-row"><span>Shared expenses recorded</span>${amountChip(nativeMoney(w.shared,'CLP'))}</div><div class="explain-row"><span>Shared expenses Neal paid</span>${amountChip(nativeMoney(w.paid,'CLP'))}</div>
@@ -555,8 +563,12 @@ function overviewWithAnalysis(){
   const html=liveOverview(),analysis=monthlyAnalytics();
   return !analysis||!window.CasaAnalysis?html:html.replace('<div class="card chart-card subsection">',`${window.CasaAnalysis.averages(analysis)}${window.CasaAnalysis.host()}<div class="card chart-card subsection">`);
 }
+function budgetContext(){return {state,month:ui.month,amount:rowAmount,format:nativeMoney,categoryLabel,personName,monthLabel,isTrue,openModal,
+ readOnly:state.editing_external||state.storage?.read_only||state.storage?.online===false,
+ save:payload=>mutate('/api/budget',payload,'Monthly budget goals saved'),
+ drill:(id,person)=>{ui.person=person;ui.period='month';ui.category=id;ui.kind='spending';ui.transactionFilters='';ui.search='';navigate('transactions')}};}
 function monthEndWithAnalysis(){
-  const html=liveMonthEnd();
+  const html=liveMonthEnd().replace('<section class="card card-pad subsection month-history-card">',`${window.CasaBudget?.render(budgetContext())||''}<section class="card card-pad subsection month-history-card">`);
   return !window.CasaAnalysis?html:html.replace('<section class="card card-pad subsection month-history-card">',`${window.CasaAnalysis.host()}<section class="card card-pad subsection month-history-card">`);
 }
 function mountMonthlyAnalysis(){
