@@ -3,6 +3,7 @@
 let state = null;
 let cloudStatus = null;
 let refreshInFlight = false;
+let dashboardMemo=null;
 const ui = {view:'overview',month:'',period:'month',currency:'CLP',person:'all',search:'',category:'all',kind:'all',transactionFilters:'',projectionYears:10,projectionRate:null,projectionMonthly:null,importPreview:null};
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -63,6 +64,7 @@ function selectReportingYear(year){
   ui.projectionRate=null;ui.projectionMonthly=null;
 }
 function renderReportingControls(){
+  const overview=ui.view==='overview';$('#year-select').hidden=overview;$('#month-select').hidden=overview;
   if(!supportsAnnualReport())ui.period='month';
   const years=[...new Set(availableReportingMonths().map(month=>month.slice(0,4)))].sort().reverse();
   $('#year-select').innerHTML=years.map(year=>`<option value="${year}" ${reportYear()===year?'selected':''}>${year}</option>`).join('');
@@ -96,9 +98,13 @@ const fv = (balance,monthly,rate,months) => {const r=Math.pow(1+Math.max(-.99,n(
 const addMonths = (month,offset) => {const d=new Date(`${month}-15T12:00:00`);d.setMonth(d.getMonth()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;};
 
 async function request(path,body){
+  if(body&&window.CasaWeb&&window.CasaSync?.isConfigured()&&window.CasaSync.handles(path))return window.CasaSync.enqueue(path,body);
+  return rawRequest(path,body);
+}
+async function rawRequest(path,body){
   const response=await fetch(path,{method:body?'POST':'GET',credentials:'omit',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
   const result=await response.json();
-  if(!response.ok){if(response.status===409&&body){try{await load(false)}catch{}}const error=new Error(result.error||'The workbook could not be updated.');error.status=response.status;throw error;}
+  if(!response.ok){if(response.status===409&&body&&!body._request_id){try{await load(false)}catch{}}const error=new Error(result.error||'The workbook could not be updated.');error.status=response.status;throw error;}
   return result;
 }
 async function mutate(path,payload,success='Saved to Excel'){
@@ -108,23 +114,37 @@ async function mutate(path,payload,success='Saved to Excel'){
 function googleMaster(){return state?.storage?.mode==='google';}
 function normalizeSelectedMonth(){if(!ui.month)ui.month=state.settings.default_month||state.months.at(-1);const available=availableReportingMonths();if(!available.includes(ui.month)&&available.length)ui.month=available.at(-1);}
 function acceptCloudResult(result,message){
-  state=result.state||result;
+  if(window.CasaSync?.isConfigured()&&!result.sync?.pending){void window.CasaSync.accept(result);if(message)toast(message.replace(/\bExcel\b/g,'Google Sheets'));return;}
+  applyCloudState(result);
+  if(message)toast(result.sync?.pending?'Saved on this device · syncing to Google Sheets…':googleMaster()?message.replace(/\bExcel\b/g,'Google Sheets'):message);
+}
+function applyCloudState(result){
+  window.CasaWeb?.setPreferences?.(result.preferences);
+  state={...(result.state||result),device_pending_count:result.sync?.pending||0};
   if(result.cloud_status)cloudStatus=result.cloud_status;
   else if(state.storage)cloudStatus={...(cloudStatus||{}),storage:state.storage};
   normalizeSelectedMonth();render();
-  if(message)toast(googleMaster()?message.replace(/\bExcel\b/g,'Google Sheets'):message);
 }
+let webBootGeneration=0;
 async function load(notify=false){
+  const loadGeneration=webBootGeneration;
   if(notify&&refreshInFlight)return;
   const button=$('#refresh-button');let failed=false,analysisId=null,analysisResult=null;
   if(notify){refreshInFlight=true;button.disabled=true;button.setAttribute?.('aria-busy','true');analysisId=window.CasaRefresh?.begin(request,!!window.CasaWeb);}
   try{
+    if(notify&&window.CasaSync?.status().pending){window.CasaRefresh?.show({message:'Finishing your pending changes before checking Inbox…'});await window.CasaSync.settle();}
+    const requestEpoch=window.CasaSync?.epoch();
     const body=notify?(analysisId&&window.CasaWeb?{analysis_id:analysisId}:{}):undefined;
     let result=(!notify&&window.CasaWeb?.takeInitialState?.())||await request(notify?'/api/refresh':'/api/state',body);
     if(notify){window.CasaRefresh?.record?.(result.analysis);let batches=0;while(result.analysis?.remaining>0&&!result.analysis.stopped&&!window.CasaRefresh?.stopping()&&batches++<99){if(result.progress)window.CasaRefresh?.show(result.progress);result=await request('/api/refresh',body);window.CasaRefresh?.record?.(result.analysis);}analysisResult=result.analysis;}
-    state=result.state||result;
+    if(window.CasaWeb&&(!window.CasaWeb.isSignedIn()||loadGeneration!==webBootGeneration))return;
+    if(window.CasaSync?.isConfigured())result=await window.CasaSync.accept(result,requestEpoch)||result;
+    if(window.CasaWeb&&(!window.CasaWeb.isSignedIn()||loadGeneration!==webBootGeneration))return;
+    window.CasaWeb?.setPreferences?.(result.preferences);
+    state={...(result.state||result),device_pending_count:result.sync?.pending||0};
     if(result.cloud_status)cloudStatus=result.cloud_status;
     else{try{cloudStatus=await request('/api/cloud/status');}catch{cloudStatus=state.storage?{storage:state.storage}:null;}}
+    if(window.CasaWeb&&(!window.CasaWeb.isSignedIn()||loadGeneration!==webBootGeneration))return;
     normalizeSelectedMonth();$('#error-banner').hidden=true;render();
     if(notify){if(result.progress)window.CasaRefresh?.show(result.progress);toast(result.analysis?.stopped||window.CasaRefresh?.stopping()?'Analysis stopped · saved records retained':result.analysis?.summary?.review?'Sheet refreshed · documents need review':result.analysis?.summary?.organization_pending?'Sheet refreshed · file organization needs attention':googleMaster()?'Sheet and Inbox refreshed':'Workbook reloaded');}
   }catch(error){failed=true;throw error;}
@@ -240,8 +260,10 @@ function workbookPage(){
 const views={overview:{name:'Overview',render:overviewPage},transactions:{name:'Transactions',render:transactionPage},monthend:{name:'Month',render:monthEndPage},investments:{name:'Investments',render:investmentPage},accounts:{name:'Accounts',render:()=>window.CasaAccounts?window.CasaAccounts.render(accountsContext()):empty('Accounts are loading')},goals:{name:'Goals',render:goalsPage},forecast:{name:'Forecast',render:forecastPage},workbook:{name:'Workbook',render:workbookPage}};
 function render(){
   if(!state)return;
+  dashboardMemo=null;
   $('#navigation').innerHTML=Object.entries(views).map(([key,v])=>`<button class="nav-item ${ui.view===key?'active':''}" data-view="${key}" aria-label="${esc(v.name)}" ${ui.view===key?'aria-current="page"':''}>${icon(key)}<span>${v.name}</span>${ui.view===key?'<span class="nav-dot"></span>':''}</button>`).join('');
   $('#breadcrumb').textContent=views[ui.view]?.name||'Overview';
+  document.querySelector('.topbar').dataset.view=ui.view;
   renderReportingControls();
   $('#currency-select').value=ui.currency;
   $('#refresh-button').innerHTML=icon('refresh');
@@ -255,13 +277,14 @@ function render(){
     }else $('#external-banner').innerHTML=`<span>Excel editing mode · app changes are paused. Save and close the workbook, then resume.</span><button class="button small" data-action="resume-excel">Resume app editing</button>`;
   }
   $('#content').innerHTML=(views[ui.view]||views.overview).render();
-  $('#save-status').textContent=googleMaster()?`${state.storage.online===false?'Offline · verified cloud cache':state.editing_external?'Google Sheets · read-only':'Connected to Google Sheets'} · ${state.workbook_name||'Family finances'}`:`${state.editing_external?'Excel editing mode':'Connected to local Excel'} · ${state.workbook_name||'Family Finances.xlsx'}`;
+  $('#save-status').textContent=googleMaster()?`${state.storage.device_cache?'Saved on this device · checking for updates':state.storage.online===false?'Offline · last verified records':state.editing_external?'Google Sheets · read-only':'Private Google Sheet'}${state.storage.last_sync?' · Updated '+new Date(state.storage.last_sync).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):''}`:`${state.editing_external?'Excel editing mode':'Local workbook'}`;
   if(googleMaster()){
     const sidebar=document.querySelector('.sidebar-bottom');
     if(sidebar)sidebar.innerHTML='<button class="button documents-sidebar" type="button" data-upload-documents>Upload documents</button><button class="button documents-sidebar" type="button" data-casa-assistant="inbox">Inbox review</button><div class="local-indicator"><span></span>Google Sheets master</div><p>Refresh analyzes new Inbox files.<br>Google AI · private household</p><div class="demo-mark">Private household records</div>';
     for(const button of document.querySelectorAll('#content button'))if(/\b(?:Save|saved|Save assumptions).*\bExcel\b/.test(button.textContent))button.textContent=button.textContent.replace(/\bExcel\b/g,'Google Sheets');
   }
   mountMonthlyAnalysis();
+  if(['overview','monthend'].includes(ui.view))window.CasaDashboard?.mount(dashboardContext());
   if(ui.view==='investments')window.CasaPortfolio?.mount(investmentContext());
   if(ui.view==='forecast')window.CasaPlanning?.mount(investmentContext());
   if(ui.view==='accounts')window.CasaAccounts?.mount(accountsContext());
@@ -561,20 +584,24 @@ function investmentContext(){
 function groupedInvestments(){return window.CasaPortfolio?window.CasaPortfolio.render(investmentContext()):liveInvestment();}
 function interactiveForecast(){return window.CasaPlanning?window.CasaPlanning.render(investmentContext()):liveForecast();}
 function overviewWithAnalysis(){
+  if(window.CasaDashboard)return window.CasaDashboard.renderOverview(dashboardContext());
   const html=liveOverview(),analysis=monthlyAnalytics();
   return !analysis||!window.CasaAnalysis?html:html.replace('<div class="card chart-card subsection">',`${window.CasaAnalysis.averages(analysis)}${window.CasaAnalysis.host()}<div class="card chart-card subsection">`);
 }
 function budgetContext(){return {state,month:ui.month,amount:rowAmount,format:nativeMoney,categoryLabel,personName,monthLabel,isTrue,openModal,
  readOnly:state.editing_external||state.storage?.read_only||state.storage?.online===false,
- save:payload=>mutate('/api/budget',payload,'Monthly budget goals saved'),
+ save:payload=>mutate('/api/budget',payload,'Recurring monthly goals saved'),
  drill:(id,person)=>{ui.person=person;ui.period='month';ui.category=id;ui.kind='spending';ui.transactionFilters='';ui.search='';navigate('transactions')}};}
 function monthEndWithAnalysis(){
+  if(window.CasaDashboard)return window.CasaDashboard.renderMonth(dashboardContext());
   const html=liveMonthEnd().replace('<section class="card card-pad subsection month-history-card">',`${window.CasaBudget?.render(budgetContext())||''}<section class="card card-pad subsection month-history-card">`);
   return !window.CasaAnalysis?html:html.replace('<section class="card card-pad subsection month-history-card">',`${window.CasaAnalysis.host()}<section class="card card-pad subsection month-history-card">`);
 }
 function mountMonthlyAnalysis(){
   if(!window.CasaAnalysis||!window.CasaAnalytics)return;
   if(!['overview','monthend'].includes(ui.view)){window.CasaAnalysis.mount(null);return;}
+  if(state.device_pending_count||state.storage?.revalidating){window.CasaAnalysis.mount(null);const host=$('#ai-summary');if(host)host.innerHTML=`<div class="dashboard-summary-pending"><span class="dashboard-kicker">CASA INTELLIGENCE</span><p>${state.device_pending_count?'Your changes are syncing. Insights will update from the confirmed figures.':'Checking for fresh records before updating your insights…'}</p></div>`;return;}
+  if(ui.view==='overview'&&window.CasaDashboard){window.CasaAnalysis.mount(window.CasaDashboard.summaryPayload(dashboardContext()));return;}
   const analysis=monthlyAnalytics(ui.view==='monthend'?'all':ui.person);
   if(!analysis)return;
   const payload=window.CasaAnalytics.summaryPayload(analysis);
@@ -584,6 +611,19 @@ function mountMonthlyAnalysis(){
     payload.settlement={currency:'CLP',shared:w.shared,incomeNeal:w.incomes.neal,incomePartner:w.incomes.partner,nealRatio:w.ratio,netNealPays:s.remaining??w.estimate,unallocatedCount:w.pending,confirmed:s.remaining!==null,cumulativeKnown:!c.unresolved};
   }
   window.CasaAnalysis.mount(payload);
+}
+function dashboardContext(){
+ if(dashboardMemo)return dashboardMemo;
+ const analysis=monthlyAnalytics('all');
+ const ctx={state,ui,amount:rowAmount,format:nativeMoney,personName,categoryLabel,workingMonth,monthSummary,navigate,
+  selectMonth:month=>{ui.month=month;ui.period='month';ui.person='all';navigate('monthend')},
+  drillCategory:id=>{const rows=window.CasaDashboard.compute(ctx).rows,dates=rows.map(r=>dateKey(r.date)).sort();
+   const from=ui.view==='monthend'?ui.month+'-01':ui.dashboardPeriod&&ui.dashboardPeriod!=='all'?ui.dashboardPeriod+'-01-01':dates[0]||'';
+   const to=ui.view==='monthend'?new Date(Number(ui.month.slice(0,4)),Number(ui.month.slice(5,7)),0,12).toISOString().slice(0,10):ui.dashboardPeriod&&ui.dashboardPeriod!=='all'?ui.dashboardPeriod+'-12-31':dates.at(-1)||'';
+   ui.person='all';ui.category='all';ui.kind='all';ui.search='';ui.transactionFilters=JSON.stringify({categories:[id],types:['expense','refund'],dateFrom:from,dateTo:to});navigate('transactions');},
+  rerender:render,settlementHeroHTML:practicalSettlementHero(true),monthAnalysis:analysis,
+  budgetHTML:window.CasaBudget?.render(budgetContext())||'',averagesHTML:window.CasaAnalysis?.averages(analysis)||'',recentHTML:liveRecent(liveRows(ui.month,'all'))};
+ dashboardMemo=ctx;return ctx;
 }
 views.overview.render=overviewWithAnalysis;views.transactions.render=liveTransactions;views.monthend.render=monthEndWithAnalysis;views.investments.render=groupedInvestments;views.goals.render=liveGoals;views.forecast.render=interactiveForecast;views.workbook.render=liveWorkbook;
 views.review={name:'Review',render:liveReview};paths.review=paths.info;
@@ -595,4 +635,34 @@ document.addEventListener('click',async e=>{const button=e.target.closest('[data
 
 window.CasaNavigation?.configure({restore(snapshot){Object.assign(ui,snapshot);render();window.scrollTo(0,0);}});
 if(views[location.hash.slice(1)])ui.view=location.hash.slice(1);
-window.CasaWeb.ready.then(async()=>{const entry=location.hash;await load();if(entry==='#upload')window.CasaDocuments.open(window.CasaDocumentContext());if(entry==='#assistant')window.CasaAssistant.open('chat');if(entry==='#inbox')window.CasaAssistant.open('inbox');}).catch(error=>{showError(error);$('#content').innerHTML=empty('The workbook could not be opened','Check the Google connection, then refresh your records.');});
+function renderSyncStatus(status={}){
+ let host=$('#sync-status');if(!host){host=document.createElement('section');host.id='sync-status';host.className='sync-status';host.setAttribute('aria-label','Save status');document.querySelector('.topbar').after(host)}
+ host.replaceChildren();host.hidden=!(status.pending||status.paused);
+ if(host.hidden)return;
+ host.classList.toggle('attention',!!status.paused);const dot=document.createElement('span');dot.className='sync-dot'+(status.busy?' spinning':'');dot.setAttribute('aria-hidden','true');
+ const text=document.createElement('span');text.setAttribute('role','status');text.textContent=status.paused?'A change needs attention':status.busy?`Syncing ${status.pending} change${status.pending===1?'':'s'}…`:status.message||`${status.pending} change${status.pending===1?'':'s'} retained on this device`;
+ const button=document.createElement('button');button.type='button';button.className='small-link';button.textContent=status.paused?'Review changes':'Details';button.onclick=showPendingChanges;host.append(dot,text,button);
+}
+function showPendingChanges(){
+ const status=window.CasaSync.status(),items=status.items||[];
+ openModal('Your changes',`<p class="modal-description">${esc(status.message||'Edits appear immediately. Google Sheets is updated in the background. Only confirmed saves are removed from this device’s queue.')}</p><div class="pending-change-list">${items.map(item=>`<div class="pending-change"><div><strong>${esc(item.path.split('/').at(-1).replaceAll('-',' '))}</strong><small>${esc(new Date(item.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}))} · retained on this device</small></div><button class="small-link" type="button" data-discard-pending="${esc(item.id)}" ${status.busy?'disabled':''}>Remove pending edit</button></div>`).join('')||'<p>All changes have reached Google Sheets.</p>'}</div>`,items.length?'<button class="button primary" type="submit">Retry sync</button>':'',async()=>{await window.CasaSync.retry();});
+ document.querySelectorAll('[data-discard-pending]').forEach(button=>button.onclick=()=>{const id=button.dataset.discardPending;openModal('Remove this pending edit?','<p>This removes the device’s unsynced edit and restores the last confirmed Sheet value. Confirmed Google Sheets records are retained.</p>','<button class="button primary" type="submit">Remove pending edit</button>',async()=>{await window.CasaSync.discard(id);})});
+}
+let webLifecycleReady=false;
+async function bootCasa(){
+ const generation=++webBootGeneration,entry=location.hash;
+ if(window.CasaSync&&window.CasaWeb){
+  if(!webLifecycleReady){webLifecycleReady=true;
+  window.CasaWeb.onBeforeSignOut(async()=>{try{await window.CasaSync.settle(30000);return true}catch(error){showPendingChanges();toast(error.message);return false}});
+  window.CasaWeb.onSessionEnd(async detail=>{webBootGeneration++;state=null;cloudStatus=null;dashboardMemo=null;window.CasaAnalysis?.mount(null);window.CasaSync.suspend();if(detail.reason==='signout')await window.CasaSync.clear();else if(detail.reason==='denied')await window.CasaSync.clearSnapshot();});
+  window.addEventListener('beforeunload',event=>{if(window.CasaSync.status().pending){event.preventDefault();event.returnValue='';}});
+  }
+  await window.CasaSync.configure({request:rawRequest,onState:result=>{if(generation===webBootGeneration&&window.CasaWeb.isSignedIn())applyCloudState(result)},onStatus:status=>{if(generation===webBootGeneration)renderSyncStatus(status)}});
+  if(generation!==webBootGeneration||!window.CasaWeb.isSignedIn())return;
+ }
+ try{await load();}catch(error){if(!state)throw error;showError(new Error('Showing your saved device copy. Fresh records could not be reached; pending edits remain on this device.'));}
+ if(generation!==webBootGeneration||!window.CasaWeb.isSignedIn())return;
+ if(entry==='#upload')window.CasaDocuments.open(window.CasaDocumentContext());if(entry==='#assistant')window.CasaAssistant.open('chat');if(entry==='#inbox')window.CasaAssistant.open('inbox');
+}
+window.CasaWeb.onSessionStart?.(detail=>{if(!detail.initial)void bootCasa().catch(showError)});
+window.CasaWeb.ready.then(bootCasa).catch(error=>{showError(error);$('#content').innerHTML=empty('Your records could not be opened','Your sign-in is separate from the Sheet connection. Refresh to try loading your records again.');});

@@ -26,6 +26,9 @@
   <script src="./web-session.js"></script>
   <script src="./theme.js" defer></script>
   <link rel="stylesheet" href="./experience.css">
+  <link rel="stylesheet" href="./dashboard.css">
+  <link rel="stylesheet" href="./refinement.css">
+  <link rel="stylesheet" href="./sync.css">
 </head>
 <body>
   <section id="web-login" class="web-login" aria-labelledby="web-login-title">
@@ -35,7 +38,7 @@
     <button class="web-nav-overlay" id="web-nav-overlay" aria-label="Close navigation" hidden></button>
     <aside class="sidebar" id="web-sidebar" aria-label="Main navigation">
       <button class="icon-button web-nav-close" id="web-nav-close" aria-label="Close navigation" type="button">×</button>
-      <a class="brand" href="#overview" aria-label="Casa home"><span class="brand-mark">c<span>.</span></span><span>casa<span class="brand-caption">FAMILY FINANCES</span></span></a>
+      <a class="brand" href="#overview" aria-label="Casa home"><span class="brand-mark"><img src="./icon.svg" alt="" width="42" height="42"></span><span>casa<span class="brand-caption">FAMILY FINANCES</span></span></a>
       <div class="workspace-label">YOUR HOUSEHOLD</div>
       <nav id="navigation"></nav>
       <div class="sidebar-bottom"><div class="local-indicator"><span></span>Private Google Sheet</div><p>Records stay in Google Drive.<br>Access is limited to your household.</p><div class="demo-mark">Private household records</div></div>
@@ -59,8 +62,8 @@
       </header>
       <div id="external-banner" class="external-banner" hidden></div>
       <div id="error-banner" class="error-banner" role="alert" hidden></div>
-      <div id="content" class="page-content"><div class="loading"><div class="loading-logo">c.</div><h1>Opening your household</h1><p>Reading your Google Sheet…</p></div></div>
-      <footer class="app-footer"><span id="save-status">Private Google Sheet</span><span>Source dates and review status are shown with imported records. <a href="./privacy.html" target="_blank" rel="noopener">Privacy</a></span></footer>
+      <div id="content" class="page-content"><div class="loading"><div class="loading-logo"><img src="./icon.svg" alt="" width="64" height="64"></div><h1>Opening your household</h1><p>Reading your Google Sheet…</p></div></div>
+      <footer class="app-footer"><span id="save-status">Private Google Sheet</span><span><a href="./privacy.html" target="_blank" rel="noopener">Privacy</a></span></footer>
     </main>
   </div>
   <dialog id="modal"><div id="modal-content"></div></dialog>
@@ -82,6 +85,8 @@
   <script src="./assistant.js"></script>
   <script src="./refresh-ui.js"></script>
   <script src="./month-budget.js"></script>
+  <script src="./dashboard.js"></script>
+  <script src="./sync.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

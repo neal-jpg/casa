@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="44" fill="#162432"/><rect x="32" y="32" width="128" height="128" rx="32" fill="none" stroke="#a5d4cf" stroke-width="3"/><text x="94" y="133" text-anchor="middle" font-family="Georgia,serif" font-size="130" fill="#a5d4cf">c</text><circle cx="130" cy="131" r="7" fill="#a5d4cf"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="casa-title">
+  <title id="casa-title">Casa — your home finances</title>
+  <rect width="192" height="192" rx="44" fill="#123d43"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M31 88 96 35l65 53M48 77v68a13 13 0 0 0 13 13h70a13 13 0 0 0 13-13V77" stroke="#e0f3ee" stroke-width="10"/>
+    <path d="M112 96c-3-6-9-9-17-9-10 0-17 5-17 12 0 8 8 11 18 13s18 6 18 14c0 8-8 14-18 14-9 0-16-4-20-11M96 78v71" stroke="#8bd7c2" stroke-width="8"/>
+  </g>
+</svg>

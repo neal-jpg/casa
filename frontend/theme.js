@@ -68,14 +68,18 @@
   else if (system && system.addListener) system.addListener(onSystemChange);
 
   const initialRevision = revision;
+  function receivePreferences(saved) {
+    // Loading financial state is independent of sign-in. A late state response
+    // may initialize this device, but must never undo a theme click made here.
+    if (revision !== initialRevision || !saved || !valid(saved.theme)) return;
+    preference = saved.theme;
+    try { window.localStorage.setItem(storageKey, preference); } catch (_) { /* Server remains authoritative. */ }
+    apply();
+  }
+  window.CasaWeb?.onPreferences?.(receivePreferences);
   const ready = (window.CasaWeb ? window.CasaWeb.ready.then(() => window.CasaWeb.initialPreferences()) :
     fetch('/api/preferences', { credentials: 'same-origin' }).then(response => response.ok ? response.json() : null))
-    .then(saved => {
-      if (revision !== initialRevision || !saved || !valid(saved.theme)) return;
-      preference = saved.theme;
-      try { window.localStorage.setItem(storageKey, preference); } catch (_) { /* Server remains authoritative. */ }
-      apply();
-    }).catch(() => {});
+    .then(receivePreferences).catch(() => {});
 
   window.CasaTheme = Object.freeze({
     getPreference: () => preference,

@@ -32,11 +32,23 @@
   let mountedKey = null;
   let currentPayload = null;
   let pollTimer = null;
-  let autoEnabled = true;
+  let autoEnabled = !global.CasaWeb;
   let enableReady = false;
-  const periodTitle = () => currentPayload?.period === 'year' ? `Your ${escape(currentPayload.year)}, explained` : 'Your month, explained';
+  let preferenceEdited = false;
+  function receivePreferences(value) {
+    if(preferenceEdited||typeof value?.ai_auto!=='boolean')return;
+    const newlyEnabled=!autoEnabled&&value.ai_auto;
+    autoEnabled=value.ai_auto;enableReady=true;
+    if(currentPayload){paint(jobs.get(mountedKey));if(newlyEnabled&&jobs.get(mountedKey)?.status==='idle')void run(false);}
+  }
+  global.CasaWeb?.onPreferences?.(receivePreferences);
+  global.CasaWeb?.onSessionEnd?.(()=>{
+    clearTimeout(pollTimer);mountedKey=null;currentPayload=null;jobs.clear();
+    autoEnabled=false;enableReady=false;preferenceEdited=false;
+  });
+  const periodTitle = () => currentPayload?.context==='dashboard' ? 'The bigger picture' : currentPayload?.period === 'year' ? `Your ${escape(currentPayload.year)}, explained` : 'Your month, explained';
   const header = (working=false) => `<div class="card-header"><div><div class="ai-eyebrow">CASA INTELLIGENCE <span>AI</span></div><h2 class="section-title">${periodTitle()}</h2></div><div class="ai-actions"><label class="ai-auto"><input type="checkbox" id="ai-auto" ${autoEnabled?'checked':''}> Auto summaries</label><button class="button small" id="ai-refresh" ${working?'disabled':''}>${working?'Analyzing…':'Refresh summary'}</button></div></div>`;
-  const disclosure = '<details class="ai-privacy"><summary>About this AI summary <span>Aggregate data only · Cloud AI</span></summary><p class="table-note ai-disclosure">Google Gemini through Casa’s private backend. Only selected-period totals, monthly category comparisons, and coverage notes are sent. No transaction descriptions, account numbers, receipts, or workbook files. Summaries are cached privately in Drive and refresh when the figures change.</p></details>';
+  const disclosure = () => '<details class="ai-privacy"><summary>About this AI summary <span>Aggregate data only · Cloud AI</span></summary><p class="table-note ai-disclosure">Google Gemini through Casa’s private backend. '+(currentPayload?.context==='dashboard'?'Household totals, category patterns, account-group balances, aggregate balance history, goal labels and coverage notes are sent.':'Selected-period totals, monthly category comparisons, and coverage notes are sent.')+' No transaction descriptions, account numbers, receipts, or workbook files. Summaries are cached privately in Drive and refresh when the figures change.</p></details>';
   function paint(job) {
     const element = document.getElementById('ai-summary');
     if (!element) return;
@@ -44,17 +56,20 @@
     if (ready) {
       const summary = job.summary;
       const cards = (title,items,kind) => items?.length ? `<div class="ai-column ${kind}"><h3>${title}</h3>${items.map(item=>`<article><strong>${escape(item.title)}</strong><p>${escape(item.detail)}</p></article>`).join('')}</div>` : '';
-      element.innerHTML = `${header()}<p class="ai-overview">${escape(summary.overview)}</p><div class="ai-results">${cards('What changed',summary.highlights,'highlights')}${cards('Ways to spend less',summary.cost_cutting,'savings')}</div>${summary.cautions?.length ? `<details class="ai-cautions"><summary>Keep in mind <span>${summary.cautions.length} record notes</span></summary><ul>${summary.cautions.map(c=>`<li>${escape(c)}</li>`).join('')}</ul></details>` : ''}<div class="ai-timestamp">${job.generated_at?'Updated '+escape(new Date(job.generated_at).toLocaleString()):'AI generated'} · ${escape(job.provider || 'OpenAI')} · check suggestions against your records</div>${disclosure}`;
+      const dashboard=currentPayload?.context==='dashboard';
+      const results=`<div class="ai-results">${cards(dashboard?'What matters now':'What changed',summary.highlights,'highlights')}${cards(dashboard?'Opportunities to consider':'Ways to spend less',summary.cost_cutting,'savings')}</div>${summary.cautions?.length ? `<details class="ai-cautions"><summary>Keep in mind <span>${summary.cautions.length} record notes</span></summary><ul>${summary.cautions.map(c=>`<li>${escape(c)}</li>`).join('')}</ul></details>` : ''}`;
+      element.innerHTML = `${header()}<p class="ai-overview">${escape(summary.overview)}</p>${dashboard?`<details class="ai-dashboard-details"><summary>Suggestions & things to watch</summary>${results}${disclosure()}</details>`:results}<div class="ai-timestamp">${job.generated_at?'Updated '+escape(new Date(job.generated_at).toLocaleString()):'AI generated'} · ${escape(job.provider || 'Google Gemini')} · check suggestions against your records</div>${dashboard?'':disclosure()}`;
     } else if (job?.status === 'running') {
-      element.innerHTML = `${header(true)}<div class="ai-wait"><span class="ai-spinner"></span><div><strong>Reading the patterns in your ${currentPayload?.period === 'year' ? 'year' : 'month'}</strong><p>Comparing totals, category changes, and the coverage of your records…</p></div></div>${disclosure}`;
+      element.innerHTML = `${header(true)}<div class="ai-wait"><span class="ai-spinner"></span><div><strong>${currentPayload?.context==='dashboard'?'Looking across your financial picture':`Reading the patterns in your ${currentPayload?.period === 'year' ? 'year' : 'month'}`}</strong><p>${currentPayload?.context==='dashboard'?'Reviewing spending patterns, savings, investments and goals…':'Comparing totals, category changes, and the coverage of your records…'}</p></div></div>${disclosure()}`;
     } else {
       const error = job?.error;
-      const text = error || (!autoEnabled ? 'Automatic AI summaries are off. Use Refresh summary whenever you want an analysis.' : 'Preparing an analysis of the selected period’s totals and category changes.');
-      element.innerHTML = `${header()}<p class="ai-status">${escape(text)}</p>${disclosure}`;
+      const text = error || (!autoEnabled ? 'Automatic AI summaries are off. Use Refresh summary whenever you want an analysis.' : currentPayload?.context==='dashboard'?'Preparing an overall view of spending, savings, investments and goals.':'Preparing an analysis of the selected period’s totals and category changes.');
+      element.innerHTML = `${header()}<p class="ai-status">${escape(text)}</p>${disclosure()}`;
     }
     document.getElementById('ai-refresh')?.addEventListener('click',()=>run(true));
     document.getElementById('ai-auto')?.addEventListener('change',async event=>{
       autoEnabled = event.target.checked;
+      preferenceEdited = true;enableReady=true;
       try { await post('/api/preferences',{ai_auto:autoEnabled}); } catch { /* Current session setting still works offline. */ }
       if (autoEnabled) await run(false); else paint(jobs.get(mountedKey));
     });
@@ -81,19 +96,18 @@
       try {
         const value=await post('/api/insights/status',payload);
         jobs.set(key,value);
-        if(mountedKey===key){paint(value);if(['running','busy'].includes(value.status))poll(key,payload);else if(value.status==='idle')run(false);}
+        if(mountedKey===key){paint(value);if(['running','busy'].includes(value.status))poll(key,payload);else if(value.status==='idle'&&autoEnabled)run(false);}
       } catch(error) {if(mountedKey===key)paint({status:'error',error:error.message});}
     },1800);
   }
   async function mount(payload) {
     clearTimeout(pollTimer);
-    if(!document.getElementById('ai-summary')){mountedKey=null;return;}
+    if(!payload||!document.getElementById('ai-summary')){mountedKey=null;currentPayload=null;return;}
     const key=JSON.stringify(payload);
     mountedKey=key;currentPayload=payload;
     paint(jobs.get(key));
     if(!enableReady){
-      try {if(global.CasaWeb){autoEnabled=global.CasaWeb.initialPreferences?.()?.ai_auto!==false;}else{const response=await fetch('/api/preferences',{credentials:'same-origin'});const prefs=await response.json();autoEnabled=prefs.ai_auto!==false;}}catch{}
-      enableReady=true;
+      try {if(global.CasaWeb){receivePreferences(global.CasaWeb.initialPreferences?.());}else{const response=await fetch('/api/preferences',{credentials:'same-origin'});const prefs=await response.json();autoEnabled=prefs.ai_auto!==false;enableReady=true;}}catch{}
     }
     if(mountedKey!==key) return;
     try {

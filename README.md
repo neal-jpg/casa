@@ -16,11 +16,12 @@ Serve `frontend/` with a local static server. Assets use relative paths so the s
 
 Run `python scripts/check_publish.py` before committing or publishing. This guard rejects tracked files outside the explicit public allowlist, backend files, symlinks, private credential material, private Drive references and embedded financial payloads. Keep all original statements, workbooks, receipts and backend source outside this repository.
 
-Financial API responses are requested without browser caching. Sign-in credentials remain in memory; signing out clears the view and reloads the page. AI summaries are not connected until a separate web provider is configured. Numerical charts and calculations do not need AI.
+Financial API responses are requested without browser HTTP caching. Google identity tokens stay in memory and are exchanged for a revocable Casa session. Users choose Today, 30 days, or this tab. Restoring a remembered session verifies household access before opening records.
 
-Upload documents uses Google's file chooser and limited user consent to put files
-in the private finance Inbox. Uploading does not analyze or import records.
-Refresh reloads the master Sheet only. Inbox identifiers and Picker configuration
-are returned by the authenticated backend, never embedded in public assets.
+Signed-in devices can keep an owner-scoped, AES-GCM encrypted snapshot and pending edits in IndexedDB. Changes appear immediately and sync to Google Sheets in the background. Unconfirmed edits remain visibly pending; conflicts pause for review. Explicit sign-out waits for pending edits and clears the owner's device cache. Expired sessions retain encrypted pending edits for recovery after signing in again.
 
-Google Gemini powers new-Inbox analysis on Refresh, cached Overview/Month summaries, and Ask Casa. All financial data, drafts, AI usage, and owner-upload credentials stay in private Google resources. This public repository contains the interface only.
+Overview shows household trends, averages, investments, life goals and the cumulative shared balance. Month holds income, spending, repayments, comparisons and category budgets. Goals set in Month repeat forward until changed; earlier months retain their saved goals.
+
+Upload documents sends files to the private Inbox through the authenticated backend without a separate uploader login. Refresh reads the master Sheet and uses Google Gemini to analyze new Inbox files. Gemini also powers private cached summaries and Ask Casa. Numerical charts and settlement calculations do not need AI.
+
+Financial data, drafts, AI usage and upload credentials stay in private Google resources, with the encrypted signed-in device cache described above. This public repository contains the interface only.

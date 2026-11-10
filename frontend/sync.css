@@ -1,0 +1,19 @@
+#sync-status{display:flex;align-items:center;gap:10px;margin:12px 36px 0;padding:11px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--muted);font-size:12px;white-space:normal;box-shadow:none}
+#sync-status::before{display:none}#sync-status>button{margin-left:auto;flex-shrink:0}#sync-status.attention{border-color:color-mix(in srgb,var(--orange) 40%,var(--line));color:var(--ink)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex:none}.sync-dot.spinning{width:13px;height:13px;background:transparent;border:2px solid var(--line);border-top-color:var(--teal);animation:casa-spin 1s linear infinite}
+.pending-change-list{display:grid;gap:0}.pending-change{display:flex;align-items:center;gap:20px;border-top:1px solid var(--line);padding:16px 0}.pending-change>div{flex:1}.pending-change strong{display:block;text-transform:capitalize}.pending-change small{display:block;color:var(--muted);margin-top:4px}.pending-change>button{font-size:11px;color:var(--red);max-width:120px;text-align:right}
+.session-duration{display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;margin:25px 0 8px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.session-duration select{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 30px 9px 12px;font-size:12px}.web-login-card .session-device-note{margin-top:9px!important;font-size:11px;line-height:1.65;color:var(--muted)}
+.loading-logo{display:grid;place-items:center;margin:0 auto 22px!important;padding:0!important;border:0!important;background:transparent!important}.loading-logo img{width:64px;height:64px;display:block}.dashboard-summary-pending p{color:var(--muted);font-size:12px;margin:0}
+@media(max-width:860px){#sync-status{margin:10px 20px 0}}@media(max-width:600px){#sync-status{margin:9px 14px 0;font-size:11px;padding:10px 12px}.session-duration select{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.sync-dot.spinning{animation:none}}
+
+@media(min-width:380px) and (max-width:600px){
+ html[data-theme] .topbar[data-view="overview"]{grid-template-columns:repeat(3,minmax(0,1fr)) 74px repeat(3,minmax(0,1fr));gap:4px}
+ html[data-theme] .topbar[data-view="overview"] .web-menu-toggle{grid-column:1}
+ html[data-theme] .topbar[data-view="overview"] #navigation-back{grid-column:2}
+ html[data-theme] .topbar[data-view="overview"] #navigation-forward{grid-column:3}
+ html[data-theme] .topbar[data-view="overview"] #currency-select{grid-column:4;grid-row:1}
+ html[data-theme] .topbar[data-view="overview"] .theme-control{grid-column:5}
+ html[data-theme] .topbar[data-view="overview"] #refresh-button{grid-column:6}
+ html[data-theme] .topbar[data-view="overview"] .web-signout{grid-column:7}
+}

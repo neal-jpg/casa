@@ -1,1 +1,47 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Casa · Privacy & data use</title><style>body{margin:0;background:#f4f7f8;color:#223540;font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:740px;margin:60px auto;padding:32px;background:white;border:1px solid #dce5e8;border-radius:20px}a{color:#356d79}h1{line-height:1.2}h2{font-size:18px;margin-top:28px}small{color:#627880}@media(max-width:600px){main{margin:16px;padding:24px}}</style></head><body><main><a href="./">← Casa</a><h1>Privacy & data use</h1><small>Updated November 9, 2026 · Private household finance app</small><p>Casa is an invitation-only household finance tool. Its interface is hosted on GitHub Pages. Financial records, source documents, account details and credentials are not published in that interface or repository.</p><h2>Sign-in and access</h2><p>Google sign-in verifies your identity. The backend checks an approved household account list before serving financial data or accepting uploads. A separate one-time owner connection uses Google’s limited <code>drive.file</code> permission to create documents in the configured Inbox. It does not request permission to read your entire Drive.</p><h2>Where information lives</h2><p>The master financial records and source documents live in the household’s restricted Google Drive and Google Sheet. Private runtime files hold import drafts, processing receipts, cached summaries and AI usage. Owner upload credentials are encrypted in Google Secret Manager. Browser sign-in tokens and chat conversation history stay in page memory rather than persistent browser storage.</p><h2>Google AI</h2><p>Pressing Refresh can send new Inbox documents to Google Gemini for extraction and categorization. PDF and image content may include any identifiers visible in the original; redact or crop those before upload. AI summaries receive aggregate comparisons. Chat receives relevant saved financial figures and a limited sample of transaction descriptions. Recognized identifiers in text are scrubbed, but automatic redaction is not guaranteed.</p><p>Google Cloud’s data-governance and retention terms apply. Do not assume zero retention. Casa does not enable model tools, web search, or request-response logging for these financial requests. AI cannot transfer money or directly edit records; Casa validates proposed imports and sends uncertain sources to review.</p><h2>Processing and retention</h2><p>Casa records processed file IDs and content hashes to avoid repeated analysis. Original uploads remain in Drive. Removing a source file does not automatically delete imported financial records or processing history. The household owner controls records and access, and can arrange removal of stored records, drafts, summaries or the upload connection. Limited operational and security logs may be retained by the hosting providers.</p><h2>Sharing, revocation and questions</h2><p>Casa does not sell household data or include advertising analytics. Authorized household members can see the household information available through the app. You can revoke Casa’s Google authorization from your Google Account settings. Contact the household owner using the support address displayed on Google’s consent screen for access, correction, deletion or privacy questions.</p><p><a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance">Google Cloud AI data-governance terms</a> · <a href="https://myaccount.google.com/connections">Manage Google connections</a></p></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Casa · Privacy &amp; data use</title>
+  <style>
+    body{margin:0;background:#f4f7f8;color:#223540;font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{max-width:740px;margin:60px auto;padding:32px;background:white;border:1px solid #dce5e8;border-radius:20px}
+    a{color:#356d79}h1{line-height:1.2}h2{font-size:18px;margin-top:28px}small{color:#627880}
+    code{font-size:.9em;overflow-wrap:anywhere}
+    @media(max-width:600px){main{margin:16px;padding:24px}}
+  </style>
+</head>
+<body>
+<main>
+  <a href="./">← Casa</a>
+  <h1>Privacy &amp; data use</h1>
+  <small>Updated November 10, 2026 · Private household finance app</small>
+  <p>Casa is an invitation-only household finance tool. Its interface is hosted on GitHub Pages. Financial records, source documents, account details and credentials are not published in that interface or repository.</p>
+
+  <h2>Sign-in and access</h2>
+  <p>Google sign-in verifies your identity. Casa checks an approved household account list and exchanges the Google identity token for its own revocable session credential. The Google token is never saved. Casa’s credential includes your identity and session details and is saved in your browser’s localStorage when you choose Today or 30 days, or sessionStorage when you choose until closing the tab. Today ends at midnight in Chile; tab-only sessions also have a 12-hour server limit. Use remembered sign-in only on a personal device.</p>
+  <p>A separate one-time owner connection uses Google’s limited <code>drive.file</code> permission to create documents in the configured Inbox. It does not request permission to read your entire Drive. Ordinary household uploads require Casa sign-in but no extra Google permission prompt.</p>
+
+  <h2>Where information lives</h2>
+  <p>The master financial records and source documents live in the household’s restricted Google Drive and Google Sheet. Private runtime files hold import drafts, processing receipts, recovery information, cached summaries and AI usage. Runtime compression reduces transfers; it does not encrypt the file or change its sharing. Owner upload credentials are encrypted in Google Secret Manager.</p>
+  <p>Casa’s private Google Cloud metadata bucket holds a financial operation lock and hashed session records. The session records contain a claims hash and expiry, without plaintext email addresses or financial amounts. The backend may briefly cache verified records in memory to speed up reads. Financial HTTP responses are marked not to cache.</p>
+
+  <h2>Device copies and background saves</h2>
+  <p>After verifying your session, Casa can reopen a saved device copy while it checks fresh server data. That snapshot and pending edits are encrypted in owner-scoped IndexedDB storage using a non-extractable browser key. This is not end-to-end encryption: it does not protect against someone using your unlocked signed-in browser or malicious code running on Casa’s origin.</p>
+  <p>Edits appear after they are retained on your device and save to Google Sheets in the background. The sync indicator shows pending work and problems. Conflicting external changes pause for review. An edit remains on your device until the server confirms it or you explicitly discard it.</p>
+  <p>Sign-out first requires pending edits to finish syncing or be discarded, then revokes the session and clears that owner’s device cache and key. Session expiry removes the login credential but retains encrypted pending work for the same owner’s next sign-in. Clearing browser data yourself can permanently remove unsynced edits. Chat conversation history stays in page memory rather than persistent browser storage.</p>
+
+  <h2>Google AI</h2>
+  <p>Pressing Refresh can send new Inbox documents to Google Gemini for extraction and categorization. PDF and image content may include any identifiers visible in the original; redact or crop those before upload. AI summaries receive aggregate financial, portfolio and goal context. Chat receives relevant saved financial figures and a limited sample of transaction descriptions. Recognized identifiers in text are scrubbed, but automatic redaction is not guaranteed.</p>
+  <p>Google Cloud’s data-governance and retention terms apply. Do not assume zero retention. Casa does not enable model tools, web search, or request-response logging for these financial requests. AI cannot transfer money or directly edit records; Casa validates proposed imports and sends uncertain sources to review.</p>
+
+  <h2>Processing and retention</h2>
+  <p>Casa records processed file IDs and content hashes to avoid repeated analysis. Original uploads remain in Drive. Removing a source file does not automatically delete imported financial records or processing history. The household owner controls records and access, and can arrange removal of stored records, drafts, summaries or the upload connection. Limited operational and security logs may be retained by the hosting providers.</p>
+
+  <h2>Sharing, revocation and questions</h2>
+  <p>Casa does not sell household data or include advertising analytics. Authorized household members can see the household information available through the app. Sign out of Casa to end its remembered session; you can also revoke Casa’s Google authorization from your Google Account settings. Contact the household owner using the support address displayed on Google’s consent screen for access, correction, deletion or privacy questions.</p>
+  <p><a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance">Google Cloud AI data-governance terms</a> · <a href="https://myaccount.google.com/connections">Manage Google connections</a></p>
+</main>
+</body>
+</html>
