@@ -17,3 +17,5 @@
  html[data-theme] .topbar[data-view="overview"] #refresh-button{grid-column:6}
  html[data-theme] .topbar[data-view="overview"] .web-signout{grid-column:7}
 }
+
+.web-login-mark{display:grid;place-items:center}.web-login-mark img{display:block;width:64px;height:64px}
